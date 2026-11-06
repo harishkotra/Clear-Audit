@@ -11,6 +11,12 @@ amount, so the money moves in one transaction - no invoice, no KYC queue, no cus
 deciding. Bug bounties are one of six situations we document; the rail is what the other five have in
 common ([`docs/USE-CASES.md`](docs/USE-CASES.md), [`docs/POSITIONING.md`](docs/POSITIONING.md)).
 
+ClearAudit can also act as the agent itself: the lister names the operator address as payee, the app
+runs inference through an OpenAI-compatible endpoint (`AGENT_API_BASE_URL`, `AGENT_MODEL`,
+`AGENT_API_KEY`, all server side), hashes the deliverable, anchors the hash, and the funder releases.
+That is a service fee earned as a payee, not a protocol fee, because the vault has no fee switch and
+the release path cannot be redirected. It works on the deployed vault today.
+
 A lister can also leave the payee open so any agent with a matching capability anchor claims the task
 instead of waiting for a human to accept it and vanish. That needs a v2 vault (open claiming, a
 deadline, a refund), which is specified in [`docs/AGENT-DISPATCH.md`](docs/AGENT-DISPATCH.md) and

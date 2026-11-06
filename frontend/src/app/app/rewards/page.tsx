@@ -10,6 +10,7 @@ import { useEscrow } from "@/hooks/useEscrow";
 import { useNow, useVault } from "@/hooks/useVault";
 import { useProfile } from "@/lib/profile";
 import { useCaseById } from "@/lib/usecases";
+import AgentDispatch from "@/components/AgentDispatch";
 import { fingerprintReport, downloadBlob } from "@/lib/report";
 import { money, shortAddress, timeLeft } from "@/lib/format";
 
@@ -326,6 +327,15 @@ export default function RewardsPage() {
                 </table>
               </div>
             )}
+
+            <AgentDispatch
+              deals={mine.map((d) => ({
+                id: d.id,
+                researcher: d.researcher,
+                amount: money(d.amount, decimals),
+                status: d.status,
+              }))}
+            />
           </div>
         </div>
       )}
