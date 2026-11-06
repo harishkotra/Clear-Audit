@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAccount } from "wagmi";
 import { useEffect, useState, type ReactNode } from "react";
 import Brand from "./Brand";
 import ConnectButton from "./ConnectButton";
@@ -29,9 +30,53 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const { profile, clear } = useProfile();
+  const { isConnected, isConnecting, isReconnecting } = useAccount();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => setMounted(true), []);
+
+  // Render nothing until the wallet state is known, so neither the gate nor the
+  // page flashes for a returning user whose connector is still reconnecting.
+  if (!mounted) {
+    return <div className="min-h-screen bg-[#08090d]" />;
+  }
+
+  // The wallet is the identity of this app: without one there is nothing to
+  // read (no payouts, no rewards, no devnet settlement) and nothing to sign.
+  // Rendering the gate instead of the page is the whole rule — no per-page
+  // guards to forget, and the page's own markup is never sent to a browser
+  // that has no wallet connected.
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen bg-[#08090d]">
+        <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col justify-center px-6 py-16">
+          <Brand />
+          <h1 className="mt-10 text-[26px] font-semibold tracking-[-0.02em] text-white">
+            Connect a wallet to continue
+          </h1>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-500">
+            {isConnecting || isReconnecting
+              ? "Reconnecting to your wallet…"
+              : "Every screen behind this point is a wallet view: the payouts you can settle, the rewards you can release, and the devnet settlement you can trigger. Nothing is stored on a server, so there is no account to sign into."}
+          </p>
+          <div className="mt-6">
+            <ConnectButton full />
+          </div>
+          <div className="mt-6 rounded-xl border border-white/8 bg-white/[0.03] p-3.5 text-[11.5px] leading-relaxed text-zinc-500">
+            <span className="font-medium text-zinc-300">Which network?</span> The app runs on{" "}
+            <span className="text-zinc-300">Arc Testnet</span> (chain 5042002) for real settlement, and
+            reads a separate <span className="text-zinc-300">EIP-8141 devnet</span> (chain 1337) for the
+            research artifact on the gasless page. Connecting switches nothing until you ask it to.
+          </div>
+          <Link href="/" className="mt-8 text-[12px] text-zinc-600 hover:text-zinc-400">
+            ← Back to the site
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const nav = (
     <nav className="flex flex-col gap-1">

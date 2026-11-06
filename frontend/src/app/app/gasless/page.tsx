@@ -4,7 +4,7 @@ import AppShell from "@/components/AppShell";
 import { GaslessPanel } from "@/components/GaslessPanel";
 import { SkeletonRows, Stat } from "@/components/ui";
 import { readDevnetState } from "@/lib/devnet";
-import { DEVNET_CHAIN_ID } from "@/lib/constants";
+import { DEVNET_CHAIN_ID, DEVNET_EXPLORER } from "@/lib/constants";
 
 const REFERENCES = [
   ["0x9d69aae87b60cf040d81cdb9e5f826ebd50185679259f08f16c22fb861986556", "release paid by the protocol relayer, researcher received 1 000 mUSDC"],
@@ -116,7 +116,15 @@ async function DevnetSection() {
               {REFERENCES.map(([hash, label]) => (
                 <li key={hash} className="text-[11.5px] leading-relaxed">
                   <span className="block text-zinc-400">{label}</span>
-                  <span className="block break-all font-mono text-[10.5px] text-zinc-600">{hash}</span>
+                  <a
+                    href={`${DEVNET_EXPLORER}/tx/${hash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Open in the frame-pool explorer"
+                    className="block break-all font-mono text-[10.5px] text-zinc-600 underline decoration-white/15 underline-offset-4 transition hover:text-zinc-300"
+                  >
+                    {hash}
+                  </a>
                 </li>
               ))}
             </ul>

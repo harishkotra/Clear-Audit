@@ -174,6 +174,13 @@ contracts are copied back into `contracts/` so the repository is self-contained 
 see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Foundry tests need `forge install foundry-rs/forge-std`
 (the `lib/` directory is intentionally not vendored).
 
+## Using the app
+
+Every screen under `/app` is a wallet view, so the app asks for a wallet first and shows nothing
+until one is connected. One **Connect wallet** button: an injected wallet is used when the browser has
+one, WalletConnect when it does not and a project id is configured. Nothing is stored on a server —
+the connected address is the identity, and the optional display profile lives in `localStorage`.
+
 ## Research artifacts
 
 - **EIP-8141 alt-mempool sponsorship** — the EF track artifact. A reference vault on devnet (`1337`)
@@ -190,7 +197,7 @@ see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Foundry tests need `forge instal
 | --- | --- |
 | Arc | USDC-native vault, conditional escrow, dispute state machine, deployed end to end in Arc Studio (the wired `USDCPaymaster` is not in the product path — see above) |
 | Arkiv | Expiring report anchors; every release is refused without a live anchor that matches the chain |
-| Ethereum Foundation | EIP-8141 frame transaction on the Alternative Mempool: sponsored settlement with no EntryPoint and no researcher gas |
+| Ethereum Foundation | EIP-8141 frame transaction on the Alternative Mempool: settlement with no EntryPoint, no bundler, and no researcher gas |
 
 ## Arkiv
 

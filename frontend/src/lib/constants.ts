@@ -17,6 +17,8 @@ export const USDC_ADDRESS = (process.env.NEXT_PUBLIC_USDC_ADDRESS ??
   "0x3600000000000000000000000000000000000000") as `0x${string}`;
 export const ARC_RPC = process.env.NEXT_PUBLIC_ARC_RPC_URL ?? "https://rpc.testnet.arc.io";
 export const ARC_EXPLORER = "https://explorer.testnet.arc.io";
+/** The alt-mempool devnet explorer (frame pool explorer). Shows frame transactions. */
+export const DEVNET_EXPLORER = "https://explorer.altmempool.wtf";
 
 // ───────────────────── EF alt-mempool (prototype) ───────────────
 

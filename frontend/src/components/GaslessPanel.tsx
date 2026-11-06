@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Notice } from "@/components/ui";
+import { DEVNET_EXPLORER } from "@/lib/constants";
 
 type OpenDeal = { id: string; amount: string; whitehat: string };
 
@@ -16,11 +17,19 @@ const DEMO_HASH =
 export function GaslessPanel({ open }: { open: OpenDeal[] }) {
   const [dealId, setDealId] = useState(open[0]?.id ?? "");
   const [busy, setBusy] = useState<"anchor" | "claim" | null>(null);
-  const [note, setNote] = useState<{ tone: "info" | "success" | "error"; text: string; href?: string } | null>(null);
+  const [note, setNote] = useState<{ tone: "info" | "success" | "error"; text: string } | null>(null);
+  const [receipt, setReceipt] = useState<{
+    txHash: string;
+    status?: string;
+    blockNumber: number | null;
+    gasUsed: number | null;
+    frames: { index: number; status?: string; gasUsed?: string }[];
+  } | null>(null);
 
   async function anchor() {
     setBusy("anchor");
     setNote(null);
+    setReceipt(null);
     try {
       const res = await fetch("/api/reports", {
         method: "POST",
@@ -58,13 +67,14 @@ export function GaslessPanel({ open }: { open: OpenDeal[] }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Claim failed.");
-      setNote({
-        tone: "success",
-        text: `Settled without the researcher holding gas. Frames: ${(json.frames ?? [])
-          .map((f: { index: number; status?: string }) => `${f.index}:${f.status ?? "?"}`)
-          .join(" · ")}`,
-        href: json.txHash,
+      setReceipt({
+        txHash: json.txHash,
+        status: json.status,
+        blockNumber: json.blockNumber ?? null,
+        gasUsed: json.gasUsed ?? null,
+        frames: json.frames ?? [],
       });
+      setNote({ tone: "success", text: "Settled without the researcher holding gas." });
     } catch (e: unknown) {
       setNote({ tone: "error", text: e instanceof Error ? e.message : "Claim failed." });
     } finally {
@@ -102,13 +112,59 @@ export function GaslessPanel({ open }: { open: OpenDeal[] }) {
         </button>
       </div>
 
-      {note && (
-        <Notice tone={note.tone}>
-          {note.text}{" "}
-          {note.href && (
-            <span className="font-mono text-[11px] text-zinc-400">tx {note.href.slice(0, 18)}…</span>
-          )}
-        </Notice>
+      {note && <Notice tone={note.tone}>{note.text}</Notice>}
+
+      {receipt && (
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-3.5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="text-[12px] font-medium text-emerald-300">
+              Transaction {receipt.status === "0x1" ? "succeeded" : `status ${receipt.status ?? "?"}`}
+            </span>
+            <a
+              href={`${DEVNET_EXPLORER}/tx/${receipt.txHash}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11.5px] text-zinc-400 underline decoration-white/20 underline-offset-4 hover:text-white"
+            >
+              Open in the frame-pool explorer ↗
+            </a>
+          </div>
+          <dl className="mt-2.5 space-y-1.5 text-[11px]">
+            <div className="flex gap-2">
+              <dt className="w-16 shrink-0 text-zinc-500">Hash</dt>
+              <dd className="break-all font-mono text-zinc-300">{receipt.txHash}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-16 shrink-0 text-zinc-500">Block</dt>
+              <dd className="font-mono text-zinc-300">
+                {receipt.blockNumber ?? "—"}
+                {receipt.gasUsed !== null && (
+                  <span className="text-zinc-500"> · {receipt.gasUsed.toLocaleString()} gas</span>
+                )}
+              </dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-16 shrink-0 text-zinc-500">Frames</dt>
+              <dd className="font-mono text-zinc-300">
+                {receipt.frames.length
+                  ? receipt.frames
+                      .map(
+                        (f) =>
+                          `${f.index}:${f.status ?? "?"}${
+                            f.gasUsed ? ` (${Number(BigInt(f.gasUsed)).toLocaleString()} gas)` : ""
+                          }`,
+                      )
+                      .join(" · ")
+                  : "—"}
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-zinc-600">
+            The explorer is a convenience view over the same chain. The independent proof is{" "}
+            <code className="text-zinc-400">eth_getTransactionReceipt</code> on{" "}
+            <code className="text-zinc-400">https://altmempool.forshtat.com</code> for this hash.
+          </p>
+        </div>
       )}
       <p className="text-[11.5px] leading-relaxed text-zinc-600">
         The release is refused unless the Arkiv anchor exists, is unexpired, and names the same

@@ -90,10 +90,18 @@ export function Notice({ tone, children }: { tone: "error" | "success" | "info";
   );
 }
 
-export function ExplorerLink({ path, children }: { path: string; children: ReactNode }) {
+export function ExplorerLink({
+  path,
+  children,
+  base = ARC_EXPLORER,
+}: {
+  path: string;
+  children: ReactNode;
+  base?: string;
+}) {
   return (
     <a
-      href={`${ARC_EXPLORER}${path}`}
+      href={`${base}${path}`}
       target="_blank"
       rel="noreferrer"
       className="font-mono text-[11.5px] text-zinc-500 underline decoration-white/20 underline-offset-4 transition hover:text-zinc-300"

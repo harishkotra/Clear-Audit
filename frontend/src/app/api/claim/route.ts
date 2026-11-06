@@ -165,6 +165,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       txHash,
       status: receipt.status,
+      blockNumber: receipt.blockNumber ? Number(BigInt(receipt.blockNumber)) : null,
+      gasUsed: receipt.gasUsed ? Number(BigInt(receipt.gasUsed)) : null,
       chainId: DEVNET_CHAIN_ID,
       whitehat: deal.whitehat,
       frames: receipt.frameReceipts?.map((f: { status?: string; gasUsed?: string }, i: number) => ({

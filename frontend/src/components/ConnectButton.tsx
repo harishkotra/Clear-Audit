@@ -4,6 +4,21 @@ import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { ARC_CHAIN_ID } from "@/lib/constants";
 import { shortAddress } from "@/lib/format";
 
+/**
+ * One button, everywhere. No "injected or WalletConnect" choice in the UI: the
+ * connector is picked from what the browser actually has. An injected wallet is
+ * the fastest path; a phone browser without one falls back to WalletConnect, and
+ * WalletConnect is only configured when a project id exists (see lib/wagmi.ts).
+ */
+function pickConnector(connectors: ReturnType<typeof useConnect>["connectors"]) {
+  const injected = connectors.filter((c) => c.id !== "walletConnect");
+  const hasInjectedProvider = typeof window !== "undefined" && Boolean((window as { ethereum?: unknown }).ethereum);
+  if (hasInjectedProvider && injected.length > 0) {
+    return injected.find((c) => c.id === "injected") ?? injected[0];
+  }
+  return connectors.find((c) => c.id === "walletConnect") ?? injected[0] ?? connectors[0];
+}
+
 export default function ConnectButton({ full = false }: { full?: boolean }) {
   const { address, isConnected, chainId } = useAccount();
   const { connect, connectors, isPending, error } = useConnect();
@@ -36,34 +51,21 @@ export default function ConnectButton({ full = false }: { full?: boolean }) {
     );
   }
 
-  // The injected connector is the primary path (one click, in-page).
-  // WalletConnect is the mobile path: it exists only when a project id is set,
-  // and only in the browser (see lib/wagmi.ts).
-  const injected = connectors.find((c) => c.id !== "walletConnect") ?? connectors[0];
-  const walletConnectConnector = connectors.find((c) => c.id === "walletConnect");
-
   return (
     <div className={full ? "w-full" : "flex flex-col items-end gap-1"}>
       <button
         className={cls}
-        onClick={() => injected && connect({ connector: injected })}
-        disabled={isPending || !injected}
+        onClick={() => {
+          const connector = pickConnector(connectors);
+          if (connector) connect({ connector });
+        }}
+        disabled={isPending || connectors.length === 0}
       >
         {isPending ? "Connecting…" : "Connect wallet"}
       </button>
-      {walletConnectConnector && (
-        <button
-          className={`${full ? "btn btn-ghost w-full mt-1.5" : "btn btn-ghost text-[11px]"} py-1`}
-          onClick={() => connect({ connector: walletConnectConnector })}
-          disabled={isPending}
-          title="Scan with a mobile wallet"
-        >
-          WalletConnect
-        </button>
-      )}
       {error && (
-        <span className="mt-1 block max-w-[220px] text-[10px] leading-tight text-red-400">
-          {error.message}
+        <span className={`${full ? "" : "text-right"} text-[10.5px] leading-snug text-red-400/90`}>
+          {error.message.split("\n")[0].slice(0, 110)}
         </span>
       )}
     </div>
