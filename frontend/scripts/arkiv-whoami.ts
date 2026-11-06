@@ -89,7 +89,7 @@ async function main() {
       failed = true;
     } else {
       const short = `${(Number(bal) / 1e18).toFixed(4)} tGLM`;
-      console.log(`tGLM on Rabdi     ${short}${bal === 0n ? "  UNFUNDED — https://hub.arkiv.network/faucet" : ""}`);
+      console.log(`tGLM on Rabdi     ${short}${bal === 0n ? "  UNFUNDED - https://hub.arkiv.network/faucet" : ""}`);
       if (bal === 0n) failed = true;
     }
   }
@@ -109,7 +109,7 @@ async function main() {
     failed = true;
   }
 
-  console.log(failed ? "\nNOT READY — fix the lines above." : "\nArkiv writer ready.");
+  console.log(failed ? "\nNOT READY - fix the lines above." : "\nArkiv writer ready.");
   if (failed) process.exitCode = 1;
 }
 

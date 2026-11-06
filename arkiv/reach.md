@@ -16,7 +16,7 @@ on an unpaid bounty.
 
 **Audit firms running private contests.** A contest under NDA is the same shape: money escrowed
 before work starts, evidence confidential, payout conditional. The 30-day anchor expiry is a feature
-here, not a compromise — a fixed finding should not stay indexed forever.
+here, not a compromise - a fixed finding should not stay indexed forever.
 
 ## Can they try it today
 
@@ -47,7 +47,7 @@ expose as a constant, not a fixed number we would defend forever.
 
 | Claim | Where it comes from |
 | --- | --- |
-| Deployment matches the source | `npm run verify:chain` — 13 checks, all read from RPC |
+| Deployment matches the source | `npm run verify:chain` - 13 checks, all read from RPC |
 | No fee on the deployed vault | `frontend/src/app/page.tsx` pricing tier and `BountyVault.releaseBounty` (no fee term exists in the contract) |
 | Arkiv gates payouts | `POST /api/release-guard` refuses with `403`/`409`, and the release button is disabled without an anchor |
 | Sponsored settlement works | three mined alt-mempool transactions listed in `deployments.json`, plus `npm run claim` |

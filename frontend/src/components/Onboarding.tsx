@@ -28,7 +28,7 @@ export default function Onboarding() {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (name.trim().length < 2) {
-      setError("Tell us what to call you — at least 2 characters.");
+      setError("Tell us what to call you: at least 2 characters.");
       return;
     }
     setError(null);
@@ -49,7 +49,7 @@ export default function Onboarding() {
           What are you settling?
         </h2>
         <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-zinc-500">
-          ClearAudit is one rail — escrowed funds that clear only against a live, expiring evidence
+          ClearAudit is one rail: escrowed funds that clear only against a live, expiring evidence
           record. Pick the situation closest to yours and the workspace will speak in its terms. You
           can change it any time in Settings.
         </p>
@@ -156,7 +156,7 @@ export default function Onboarding() {
           <div className="mt-4 flex flex-col gap-3 border-t border-white/8 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-[12px] text-zinc-500">
               <span className="text-emerald-300">Wallet connected.</span> This profile is stored in
-              this browser only — your wallet is the account.
+              this browser only. Your wallet is the account.
             </div>
             <button type="submit" className="btn btn-primary">
               Create workspace

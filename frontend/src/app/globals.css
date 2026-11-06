@@ -1,21 +1,26 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink-950: #08090d;
-  --color-ink-900: #0b0d13;
-  --color-ink-800: #11141c;
-  --color-ink-700: #171b25;
-  --color-line: rgba(255, 255, 255, 0.08);
-  --color-brand-400: #8b7cff;
-  --color-brand-500: #6d5ef8;
-  --color-brand-600: #5a4be0;
-  --color-mint-400: #4ade80;
+  --color-ink-950: #0b0b0c;
+  --color-ink-900: #101012;
+  --color-ink-800: #151517;
+  --color-ink-700: #1d1d20;
+  --color-line: rgba(236, 231, 221, 0.1);
+  --color-brand-400: #ff7a5c;
+  --color-brand-500: #ff5a36;
+  --color-brand-600: #e8481f;
+  --color-mint-400: #8bd17c;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-display: var(--font-serif), "Iowan Old Style", "Palatino Linotype", Georgia, serif;
 }
 
 :root {
   color-scheme: dark;
+  --paper: #ece7dd;
+  --muted: #8d887f;
+  --faint: #625e58;
+  --rule: rgba(236, 231, 221, 0.12);
 }
 
 * {
@@ -28,27 +33,51 @@ html {
 
 body {
   background: var(--color-ink-950);
-  color: #e7e9ee;
+  color: var(--paper);
   font-family: var(--font-sans);
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: rgba(109, 94, 248, 0.35);
+  background: rgba(255, 90, 54, 0.3);
   color: #fff;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-brand-400);
+  outline: 2px solid var(--color-brand-500);
   outline-offset: 2px;
+}
+
+/* Display type. The serif is the whole point: it reads as a publication about a
+   settlement rule rather than a SaaS landing page. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.02;
+}
+
+/* Small caps labels, used instead of pills for metadata. */
+.micro {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.rule {
+  height: 1px;
+  background: var(--rule);
 }
 
 @layer components {
   .card {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
+    background: #101012;
     border: 1px solid var(--color-line);
-    border-radius: 14px;
+    border-radius: 3px;
   }
 
   .btn {
@@ -58,148 +87,150 @@ body {
     gap: 0.5rem;
     height: 2.5rem;
     padding: 0 1rem;
-    border-radius: 10px;
-    font-size: 0.875rem;
-    font-weight: 550;
-    letter-spacing: -0.01em;
-    transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+    border-radius: 2px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
     white-space: nowrap;
   }
-  .btn:active {
-    transform: translateY(0.5px);
-  }
   .btn:disabled {
-    opacity: 0.45;
+    opacity: 0.4;
     pointer-events: none;
   }
 
   .btn-primary {
     background: var(--color-brand-500);
-    color: #fff;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 8px 24px -12px rgba(109, 94, 248, 0.9);
+    color: #14100e;
+    font-weight: 600;
   }
   .btn-primary:hover {
     background: var(--color-brand-400);
   }
 
   .btn-ghost {
-    border: 1px solid var(--color-line);
-    color: #d6d9e2;
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(236, 231, 221, 0.18);
+    color: var(--paper);
+    background: transparent;
   }
   .btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(236, 231, 221, 0.06);
+    border-color: rgba(236, 231, 221, 0.3);
   }
 
   .btn-mint {
-    background: rgba(74, 222, 128, 0.12);
-    border: 1px solid rgba(74, 222, 128, 0.35);
-    color: #86efac;
+    background: transparent;
+    border: 1px solid rgba(139, 209, 124, 0.4);
+    color: #a9df9c;
   }
   .btn-mint:hover {
-    background: rgba(74, 222, 128, 0.2);
+    background: rgba(139, 209, 124, 0.1);
   }
 
   .field {
     width: 100%;
     height: 2.5rem;
     padding: 0 0.75rem;
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.25);
+    border-radius: 2px;
+    background: #0a0a0b;
     border: 1px solid var(--color-line);
-    color: #e7e9ee;
+    color: var(--paper);
     font-size: 0.875rem;
-    transition: border-color 140ms ease, background 140ms ease;
+    transition: border-color 120ms ease;
   }
   .field::placeholder {
-    color: #6b7280;
+    color: #5f5b55;
   }
   .field:focus {
     outline: none;
-    border-color: rgba(139, 124, 255, 0.6);
-    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 90, 54, 0.55);
   }
 
   .label {
     display: block;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #9ca3b4;
-    margin-bottom: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 0.45rem;
   }
 
   .chip {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    border: 1px solid var(--color-line);
-    border-radius: 999px;
-    padding: 0.15rem 0.55rem;
-    font-size: 0.7rem;
-    letter-spacing: 0.02em;
-    color: #b7bcca;
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.18rem 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: transparent;
   }
 
   .nav-link {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    height: 2.25rem;
+    height: 2.15rem;
     padding: 0 0.7rem;
-    border-radius: 9px;
-    font-size: 0.875rem;
-    color: #9aa1b2;
-    transition: background 120ms ease, color 120ms ease;
+    border-radius: 2px;
+    font-size: 0.8125rem;
+    color: #9a958c;
+    transition: background 100ms ease, color 100ms ease;
   }
   .nav-link:hover {
-    color: #e7e9ee;
-    background: rgba(255, 255, 255, 0.045);
+    color: var(--paper);
+    background: rgba(236, 231, 221, 0.05);
   }
   .nav-link[data-active="true"] {
-    color: #fff;
-    background: rgba(109, 94, 248, 0.14);
-    box-shadow: inset 2px 0 0 var(--color-brand-400);
+    color: var(--paper);
+    background: rgba(255, 90, 54, 0.08);
+    box-shadow: inset 2px 0 0 var(--color-brand-500);
   }
 
   .table-wrap {
     overflow-x: auto;
     border: 1px solid var(--color-line);
-    border-radius: 12px;
+    border-radius: 3px;
   }
   .data-table {
     width: 100%;
     min-width: 640px;
     border-collapse: collapse;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
   }
   .data-table th {
     text-align: left;
-    font-size: 0.7rem;
-    font-weight: 500;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 400;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #7b8295;
-    padding: 0.65rem 1rem;
-    border-bottom: 1px solid var(--color-line);
-    background: rgba(255, 255, 255, 0.015);
+    letter-spacing: 0.12em;
+    color: var(--faint);
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    background: transparent;
+    white-space: nowrap;
   }
   .data-table td {
-    padding: 0.8rem 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(236, 231, 221, 0.06);
     vertical-align: middle;
   }
   .data-table tr:last-child td {
     border-bottom: 0;
   }
   .data-table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(236, 231, 221, 0.03);
   }
 
   .skeleton {
-    border-radius: 6px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgba(236, 231, 221, 0.04), rgba(236, 231, 221, 0.08), rgba(236, 231, 221, 0.04));
     background-size: 200% 100%;
     animation: shimmer 1.4s infinite linear;
   }
@@ -217,7 +248,7 @@ body {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -226,13 +257,5 @@ body {
 }
 
 .rise {
-  animation: rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.grid-bg {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 100%);
+  animation: rise 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }

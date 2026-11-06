@@ -33,7 +33,7 @@ export default function ConnectCheck() {
             isOkxWallet: eth.isOkxWallet ?? null,
             competingProviders: Array.isArray(eth.providers) ? eth.providers.length : 0,
           })
-        : "missing — no injected wallet on this origin",
+        : "missing - no injected wallet on this origin",
     });
     out.push({ label: "origin", ok: true, detail: `${location.protocol}//${location.host}` });
     out.push({ label: "user agent", ok: true, detail: navigator.userAgent.slice(0, 160) });
@@ -116,7 +116,7 @@ export default function ConnectCheck() {
 
       {probes && (
         <p className="mt-4 text-[11.5px] leading-relaxed text-zinc-600">
-          Copy this output if you are reporting a failure — the codes are what identify the wallet
+          Copy this output if you are reporting a failure - the codes are what identify the wallet
           build. Then{" "}
           <Link href="/app" className="underline decoration-white/20 underline-offset-4 hover:text-zinc-300">
             go back to the app

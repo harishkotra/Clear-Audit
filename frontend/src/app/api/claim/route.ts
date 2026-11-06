@@ -16,7 +16,7 @@ import {
  *
  * The gasless settlement prototype: the vault release is wrapped in an
  * EIP-8141 frame transaction whose PAYMENT frame is sponsored. It is NOT a
- * bridge to Arc — the Arc deployment is the product, this is the research
+ * bridge to Arc - the Arc deployment is the product, this is the research
  * artifact. Never present it as cross-chain settlement.
  *
  * The Arkiv guard is the same policy as the Arc release path: a live anchor,
@@ -60,7 +60,7 @@ async function verifyAnchor(input: {
     return { ok: false, reason: "Arkiv anchor is expired (simulated). The bounty cannot settle." };
   }
   if (process.env.REQUIRE_ARKIV_ANCHOR === "false") {
-    console.warn("[claim] REQUIRE_ARKIV_ANCHOR=false — accepting an unanchored claim (demo only)");
+    console.warn("[claim] REQUIRE_ARKIV_ANCHOR=false - accepting an unanchored claim (demo only)");
     return { ok: true };
   }
 

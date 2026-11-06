@@ -131,7 +131,7 @@ export default function RewardsPage() {
       setNotice({
         tone: "success",
         text: fp.encrypted
-          ? "Finding anchored. The encrypted file was downloaded — send it to the company out-of-band."
+          ? "Finding anchored. The encrypted file was downloaded - send it to the company out-of-band."
           : "Finding anchored. Only the fingerprint left your browser.",
       });
       setOpenDeal(null);
@@ -192,7 +192,7 @@ export default function RewardsPage() {
             <strong className="text-zinc-200">Evidence anchoring is paused.</strong>{" "}
             {state.arkiv.reason ?? "The Arkiv writer is not ready."}{" "}
             {state.arkiv.gate
-              ? "Payouts stay blocked until it is funded — the anchor gate fails closed."
+              ? "Payouts stay blocked until it is funded - the anchor gate fails closed."
               : "REQUIRE_ARKIV_ANCHOR=false is set, so this demo can settle without an anchor."}
           </Notice>
         </div>
@@ -240,14 +240,26 @@ export default function RewardsPage() {
               {funding ? "Confirm in your wallet…" : `Fund ${noun}`}
             </button>
             <p className="mt-3 text-[11px] leading-relaxed text-zinc-600">
-              Requires an approval and one deposit transaction. The vault holds the funds — not
+              Requires an approval and one deposit transaction. The vault holds the funds, not
               ClearAudit.
             </p>
+
+            <div className="mt-4 border-t border-[var(--rule)] pt-3">
+              <div className="flex items-center justify-between">
+                <span className="micro">Open to agents</span>
+                <span className="chip text-[#c9a06a]">needs v2</span>
+              </div>
+              <p className="mt-2 text-[11.5px] leading-relaxed text-zinc-500">
+                Let any agent claim this {noun} instead of naming one {uc.nouns.payee}. The gate
+                already checks the delivered artefact, but open claiming needs a deadline, a refund
+                path and claimTask, none of which the deployed vault has.
+              </p>
+            </div>
           </form>
 
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[13px] uppercase tracking-[0.1em] text-zinc-500">Your rewards</h2>
+              <h2 className="text-[13px] uppercase tracking-[0.1em] text-zinc-500">Your {noun}s</h2>
               <span className="text-[12px] text-zinc-600">{mine.length} total</span>
             </div>
             {loading ? (
@@ -283,11 +295,11 @@ export default function RewardsPage() {
                               <span>
                                 <span className="uppercase text-zinc-300">{r.severity}</span>
                                 <span className="block text-[11px] text-zinc-600">
-                                  {now ? timeLeft(r.expiresAt, now) : "—"}
+                                  {now ? timeLeft(r.expiresAt, now) : "-"}
                                 </span>
                               </span>
                             ) : (
-                              <span className="text-zinc-600">—</span>
+                              <span className="text-zinc-600">-</span>
                             )}
                           </td>
                           <td><StatusPill status={d.status} /></td>

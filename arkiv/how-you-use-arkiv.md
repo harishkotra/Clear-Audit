@@ -1,7 +1,7 @@
 # How we use Arkiv
 
 ClearAudit is escrow for bug bounties: a company funds a reward, a researcher submits a finding, and
-the vault pays the researcher — or a dispute freezes it. The finding itself must never be public
+the vault pays the researcher - or a dispute freezes it. The finding itself must never be public
 while unpatched, and the record must not outlive its usefulness. That makes the evidence layer the
 hard part, not the escrow.
 
@@ -62,7 +62,7 @@ Everything else stays off-chain.
 `POST /api/release-guard` and `POST /api/claim` both return `403`/`409` without a matching live
 anchor. There is one override, `REQUIRE_ARKIV_ANCHOR=false`, which logs a warning on every use and
 exists only for local development. In the shipped configuration the override is off, so an Arkiv
-outage is a settlement outage — which is the point: without the anchor the vault has no way to tell a
+outage is a settlement outage - which is the point: without the anchor the vault has no way to tell a
 real researcher from any address the company felt like paying.
 
 ## Verify it yourself

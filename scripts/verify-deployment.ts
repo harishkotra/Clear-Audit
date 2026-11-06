@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * verify-deployment.ts — independent read-only verification of the Arc
+ * verify-deployment.ts - independent read-only verification of the Arc
  * deployment. It does not trust deployments.json; it checks the chain.
  *
  *   npm run verify:chain
@@ -38,7 +38,7 @@ const client = createPublicClient({ chain: arc, transport: http() });
 let failures = 0;
 function check(label: string, ok: boolean, detail: string) {
   const mark = ok ? "PASS" : "FAIL";
-  console.log(`${mark}  ${label}${detail ? ` — ${detail}` : ""}`);
+  console.log(`${mark}  ${label}${detail ? ` - ${detail}` : ""}`);
   if (!ok) failures += 1;
 }
 
@@ -61,7 +61,7 @@ async function main() {
   if (receipt) {
     check("deployment tx succeeded", receipt.status === "success", arcCfg.deploymentTx);
   } else {
-    console.log(`SKIP  deployment tx receipt not served by this RPC — ${arcCfg.deploymentTx}`);
+    console.log(`SKIP  deployment tx receipt not served by this RPC - ${arcCfg.deploymentTx}`);
   }
 
   const token = (await call(BountyVault, vaultAbi, "token")) as `0x${string}`;

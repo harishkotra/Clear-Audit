@@ -1,7 +1,7 @@
 export function usd(raw: string | bigint | null | undefined, decimals: number, max = 2) {
-  if (raw === null || raw === undefined || raw === "") return "—";
+  if (raw === null || raw === undefined || raw === "") return "-";
   const n = Number(raw) / 10 ** decimals;
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: n === 0 ? 0 : 2,
     maximumFractionDigits: max,
@@ -13,14 +13,14 @@ export function money(raw: string | bigint | null | undefined, decimals: number)
 }
 
 export function shortAddress(addr?: string | null) {
-  if (!addr) return "—";
+  if (!addr) return "-";
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
 export function timeLeft(expiresAt: string | null | undefined, now: number) {
-  if (!expiresAt) return "—";
+  if (!expiresAt) return "-";
   const ms = Number(expiresAt) * 1000 - now;
-  if (!Number.isFinite(ms)) return "—";
+  if (!Number.isFinite(ms)) return "-";
   if (ms <= 0) return "expired";
   const s = Math.floor(ms / 1000);
   const d = Math.floor(s / 86400);

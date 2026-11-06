@@ -10,13 +10,13 @@ import { privateKeyToAccount } from "viem/accounts";
  * and then expires. The vault checks this anchor before paying out, so the
  * retention window is load-bearing rather than decorative.
  *
- * Server-only — the access key and signer never reach the browser.
+ * Server-only - the access key and signer never reach the browser.
  */
 export const REPORT_RETENTION_DAYS = 30;
 
 export const ReportSchema = defineSchema("bounty_reports", {
   // Only indexed columns can be filtered on (Arkiv matches nothing for an
-  // unindexed comparison — it does not error). An earlier version of this
+  // unindexed comparison - it does not error). An earlier version of this
   // schema declared the columns without `.indexed()`, so every anchor was
   // unqueryable and the release guard refused every payout. Do not remove
   // these: the guard's `kind`/`chainId`/`dealId` clauses depend on them.

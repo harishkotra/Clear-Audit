@@ -9,7 +9,7 @@ deliberately narrower than a pitch deck.
 Strip the bounty language and `BountyVault` is one thing:
 
 > **A fixed amount, escrowed to one designated address, released on a third party's assertion, with a
-> dispute fork to a neutral arbitrator — where the assertion is only accepted if a live, publicly
+> dispute fork to a neutral arbitrator - where the assertion is only accepted if a live, publicly
 > queryable, auto-expiring evidence record matches the on-chain terms.**
 
 Contract facts that define the shape (see `contracts/BountyVault.sol`):
@@ -22,7 +22,7 @@ Contract facts that define the shape (see `contracts/BountyVault.sol`):
 - roles are constrained at creation (`RoleConflict`): funder ≠ payee ≠ arbitrator;
 - no upgrade key, no admin withdrawal, no fee on the deployed deployment.
 
-Everything else in the product — Arkiv anchors, the guard, the sponsored devnet path — exists to make
+Everything else in the product - Arkiv anchors, the guard, the sponsored devnet path - exists to make
 that one paragraph trustworthy to someone who does not trust the operator.
 
 ## What bounties are, in this framing
@@ -35,12 +35,12 @@ are also the most crowded instantiation available, which is exactly why they sho
 
 | # | Use case | Why it fits | What it would need |
 | --- | --- | --- | --- |
-| 1 | **Post-exploit recovery settlement** — funds are returned by an exploiter or a whitehat under negotiated terms | counterparty is pseudonymous, the window is hours not weeks, evidence is on-chain and public, and the negotiation state must not persist forever | **`deadline` + `cancelBounty`** — without a refund path a funder's capital is locked forever, which is fatal here |
+| 1 | **Post-exploit recovery settlement** - funds are returned by an exploiter or a whitehat under negotiated terms | counterparty is pseudonymous, the window is hours not weeks, evidence is on-chain and public, and the negotiation state must not persist forever | **`deadline` + `cancelBounty`** - without a refund path a funder's capital is locked forever, which is fatal here |
 | 2 | **Critical-infrastructure / CVD disclosure payouts** (PSIRT, national CERTs, VDPs) | the payee can never be KYC'd in the time available; a legal retention window maps exactly onto anchor expiry | works today, no contract change |
 | 3 | **Pseudonymous work payouts** (annotation, research bounties, agent-to-agent task markets) | the payee holds no gas token and no identity; the Arkiv entity doubles as the task and the claim | `deadline` + partial release |
 | 4 | **NDA audit-contest settlement** | evidence = submission fingerprint, expiry = the NDA window, arbitrator = the neutral judge | multi-claimant payout |
 | 5 | **Parametric / attestation-gated claims** | "evidence exists, is current, and matches the claim" is literally the guard's predicate | amount tiers |
-| 6 | **Bug bounties** | fits, works today, most crowded | — |
+| 6 | **Bug bounties** | fits, works today, most crowded | - |
 
 **Recommended beachhead: #1.** Protocols already negotiate with exploiters through DMs and multisigs
 with no enforceable structure. An escrow that pays only against a matching, expiring evidence anchor,
@@ -68,7 +68,7 @@ Privacy-by-expiry is the mechanism, not a policy. "No KYC" is a consequence of i
 ## The one-paragraph version
 
 > **ClearAudit is an evidence-gated settlement rail: money leaves escrow only when a live, publicly
-> verifiable, auto-expiring evidence record matches the terms — so a pseudonymous party can be paid
+> verifiable, auto-expiring evidence record matches the terms - so a pseudonymous party can be paid
 > without a platform vouching for them.**
 
 ## What must not be claimed
@@ -92,5 +92,5 @@ point in this build:
 ## The honest gap between the pitch and the contract
 
 If the beachhead is #1 or #3, the contract needs `deadline`, `cancelBounty` and partial release. That
-is a V2, not a hackathon patch — and the current vault is deployed with no upgrade path, so it is a
+is a V2, not a hackathon patch - and the current vault is deployed with no upgrade path, so it is a
 fresh deploy. Saying that first is cheaper than having a judge find it.

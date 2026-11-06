@@ -53,7 +53,7 @@ function AppShellInner({
 
   // The wallet is the identity of this app: without one there is nothing to
   // read (no payouts, no rewards, no devnet settlement) and nothing to sign.
-  // Rendering the gate instead of the page is the whole rule — no per-page
+  // Rendering the gate instead of the page is the whole rule - no per-page
   // guards to forget, and the page's own markup is never sent to a browser
   // that has no wallet connected.
   if (!authenticated) {
@@ -66,8 +66,8 @@ function AppShellInner({
           </h1>
           <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-500">
             Every screen behind this point is a wallet view: the payouts you can
-            settle, the rewards you can release, and the devnet settlement you can
-            trigger. Signing in creates a Privy session — no email is required, and
+            settle, the work you can release, and the devnet settlement you can
+            trigger. Signing in creates a Privy session. No email is required, and
             nothing about your deals is stored on our side.
           </p>
           {insecureOrigin && (
@@ -226,7 +226,7 @@ export default function AppShell(props: {
           <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-500">
             Set <span className="font-mono text-zinc-300">NEXT_PUBLIC_PRIVY_APP_ID</span> in{" "}
             <span className="font-mono text-zinc-300">frontend/.env.local</span> and rebuild. The id is
-            public — it is the app id from the Privy dashboard, not the app secret.
+            public. It is the app id from the Privy dashboard, not the app secret.
           </p>
         </div>
       </div>

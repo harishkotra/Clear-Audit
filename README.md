@@ -1,22 +1,27 @@
 # ClearAudit
 
 **Evidence-gated settlement.** Money leaves escrow only when a live, publicly verifiable,
-auto-expiring evidence record matches the terms — so a pseudonymous party can be paid without a
+auto-expiring evidence record matches the terms - so a pseudonymous party can be paid without a
 platform vouching for them. Bug bounties are the demo; the rail is the product
 ([`docs/POSITIONING.md`](docs/POSITIONING.md)).
 
 One side locks a fixed amount in USDC. The other delivers an artefact that is anchored as a hash with
 a 30-day expiry. The payout clears only if a live anchor matches the payee, the funder and the
-amount, so the money moves in one transaction — no invoice, no KYC queue, no custody, no platform
+amount, so the money moves in one transaction - no invoice, no KYC queue, no custody, no platform
 deciding. Bug bounties are one of six situations we document; the rail is what the other five have in
 common ([`docs/USE-CASES.md`](docs/USE-CASES.md), [`docs/POSITIONING.md`](docs/POSITIONING.md)).
+
+A lister can also leave the payee open so any agent with a matching capability anchor claims the task
+instead of waiting for a human to accept it and vanish. That needs a v2 vault (open claiming, a
+deadline, a refund), which is specified in [`docs/AGENT-DISPATCH.md`](docs/AGENT-DISPATCH.md) and
+labelled `needs v2` in the app rather than sold.
 
 Live on **Arc Testnet** (chain `5042002`), where USDC is the gas token. Built for ETHGlobal Mumbai with
 all three core partners load-bearing rather than decorative: **Arc** (settlement + Arc Studio
 deployment), **Arkiv** (expiring evidence anchors that gate every payout) and the **Ethereum
 Foundation** Alternative Mempool (EIP-8141 sponsored settlement, proven end to end on devnet).
 
-- Marketing site: `frontend/src/app/page.tsx` — mechanism first, then six situations, then what we
+- Marketing site: `frontend/src/app/page.tsx` - mechanism first, then six situations, then what we
   refuse to claim
 - App: `/app` → Overview · `/app/rewards` · `/app/payouts` · `/app/gasless` · `/app/settings`
 
@@ -77,7 +82,7 @@ Company                    ClearAudit                     Researcher
 Deployment transaction:
 [`0x201d71d90b110fb3d321f3b86591ab07096b646986632bf044082e1cca12b145`](https://explorer.testnet.arc.io/tx/0x201d71d90b110fb3d321f3b86591ab07096b646986632bf044082e1cca12b145)
 
-Wiring is re-read over public RPC by `npm run verify:chain` — the vault's token is the native USDC
+Wiring is re-read over public RPC by `npm run verify:chain` - the vault's token is the native USDC
 ERC-20 interface, the paymaster points at the vault and uses EntryPoint **v0.7**
 (`PackedUserOperation`), and the paymaster owner is the deployer contract. Full record in
 [`deployments.json`](deployments.json).
@@ -88,7 +93,7 @@ ERC-20 interface, the paymaster points at the vault and uses EntryPoint **v0.7**
 > so a researcher needs no gas token without any sponsorship involved. The sponsored-settlement path
 > is the EF devnet artifact (`/app/gasless`), where a frame transaction pays the fee from the protocol
 > relayer's account. That devnet's current revision accepts only one `VERIFY` frame and will not let a
-> contract paymaster be the payer, so the deployed `SponsorPaymaster` is unused there too — see
+> contract paymaster be the payer, so the deployed `SponsorPaymaster` is unused there too - see
 > [`docs/EIP8141.md`](docs/EIP8141.md). We are not claiming 4337 sponsorship on Arc.
 
 > **Arbitrator custody, stated plainly:** the immutable arbitrator is the Arc Studio deploy wallet
@@ -104,7 +109,7 @@ The ones a reviewer will find, stated first:
 - **An open bounty cannot be cancelled.** `BountyVault` has no `cancelBounty`: funds leave an open
   bounty only through `releaseBounty`, or through `disputeBounty` → `resolveDispute(false)`. That is
   acceptable for a demo where the company controls approval, and it is the first thing to fix before
-  the vault holds real money — see [`docs/POSITIONING.md`](docs/POSITIONING.md).
+  the vault holds real money - see [`docs/POSITIONING.md`](docs/POSITIONING.md).
 - **The arbitrator is the Arc Studio deploy wallet** (paragraph above): a dispute needs that wallet.
 - **No upgrade path and no admin withdrawal**: deliberate, but it means a bug is not patchable in
   place.
@@ -132,7 +137,7 @@ NEXT_PUBLIC_VAULT_ADDRESS=0x283776AB6c2B139d6097285821AC5EdDe43e115e
 NEXT_PUBLIC_PAYMASTER_ADDRESS=0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B
 NEXT_PUBLIC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
 
-# server only — never prefix these with NEXT_PUBLIC_
+# server only - never prefix these with NEXT_PUBLIC_
 ARKIV_PRIVATE_KEY=
 ARKIV_ACCESS_KEY=
 PROTOCOL_PRIVATE_KEY=
@@ -184,28 +189,28 @@ until one is signed in. Sign-in goes through **Privy**: one **Connect wallet** b
 modal, which offers whichever wallets the visitor actually has (browser extension, mobile app, or an
 embedded wallet Privy creates for email sign-ups) and keeps a single session across all of them. We
 render no wallet picker of our own, so there is no per-extension handshake to debug. Nothing about a
-deal is stored on a server — the signed-in address is the identity, and the optional display profile
+deal is stored on a server - the signed-in address is the identity, and the optional display profile
 lives in `localStorage`.
 
 Configure it with `NEXT_PUBLIC_PRIVY_APP_ID` in `frontend/.env.local` (the app id from the Privy
-dashboard — a public identifier, not the app secret). It is inlined at build time, so rebuild after
+dashboard - a public identifier, not the app secret). It is inlined at build time, so rebuild after
 changing it. Without it the site still renders and `/app` says the wallet layer is unconfigured.
 
 ## Research artifacts
 
-- **EIP-8141 alt-mempool sponsorship** — the EF track artifact. A reference vault on devnet (`1337`)
+- **EIP-8141 alt-mempool sponsorship** - the EF track artifact. A reference vault on devnet (`1337`)
   proves a release can be paid without the researcher holding gas, using an EIP-8141 frame transaction
   whose fee is paid by the protocol relayer. It is reproducible three ways: the `/app/gasless` page (call the live
   route), `POST /api/claim`, and `npx tsx scripts/claim.ts`. Reference transaction hashes are listed
   in `deployments.json` and on the page. Design and trade-offs: [`docs/EIP8141.md`](docs/EIP8141.md).
-- **Arkiv** — anchors report fingerprints with a 30-day lifetime and is a hard dependency of payout:
+- **Arkiv** - anchors report fingerprints with a 30-day lifetime and is a hard dependency of payout:
   see `arkiv/` for the schema, the rationale and the friction log.
 
 ## Partner tracks
 
 | Partner | What it does in ClearAudit |
 | --- | --- |
-| Arc | USDC-native vault, conditional escrow, dispute state machine, deployed end to end in Arc Studio (the wired `USDCPaymaster` is not in the product path — see above) |
+| Arc | USDC-native vault, conditional escrow, dispute state machine, deployed end to end in Arc Studio (the wired `USDCPaymaster` is not in the product path - see above) |
 | Arkiv | Expiring report anchors; every release is refused without a live anchor that matches the chain |
 | Ethereum Foundation | EIP-8141 frame transaction on the Alternative Mempool: settlement with no EntryPoint, no bundler, and no researcher gas |
 
@@ -258,27 +263,27 @@ AI assistance (Claude, via a coding agent) was used to draft Solidity and TypeSc
 tests, and to review our own security assumptions. Every deployment step went through Arc Studio,
 and every address in `deployments.json` is independently re-verified against the chain by
 `npm run verify:chain`, so nothing in the submission rests on an AI claim that was not executed.
-The audit that drove the work — including the findings we dismissed — is in [`docs/AUDIT.md`](docs/AUDIT.md).
+The audit that drove the work - including the findings we dismissed - is in [`docs/AUDIT.md`](docs/AUDIT.md).
 
 ## CROPS
 
-- **C — censorship resistance.** What a user depends on us for: the frontend is a static build that
+- **C - censorship resistance.** What a user depends on us for: the frontend is a static build that
   can be served anywhere, and product reads go to Arc over public RPC with no database of ours in the
   path. The parts that are ours and can refuse service: the Next.js API routes (`/api/reports`,
   `/api/release-guard`, `/api/claim`), the Arkiv writer key, and the devnet relayer key. If they go away, existing rewards can still be read and
-  released from any wallet by calling `BountyVault` directly — but the Arkiv-gated guard is ours, so
+  released from any wallet by calling `BountyVault` directly - but the Arkiv-gated guard is ours, so
   a customer would have to run their own copy (the schema and query are in `arkiv/schema.md`).
-- **O — open source.** MIT (`LICENSE`), and the repo builds from itself: `npm install && npm run
+- **O - open source.** MIT (`LICENSE`), and the repo builds from itself: `npm install && npm run
   build`. Contracts are the sources we deployed, and `npm run verify:chain` re-derives the wiring
   from public RPC, so a fork can check the binary rather than trust us.
-- **P — privacy.** What each third party learns: the **RPC provider** sees every address the app
+- **P - privacy.** What each third party learns: the **RPC provider** sees every address the app
   reads and which vault is being queried; **Arc** sees the bounty, the researcher address and the
   amount, by construction; **Arkiv (Rabdi)** sees the report fingerprint, the two wallets and the
   amount, and keeps it 30 days; our **server** sees the report ciphertext only if the researcher
   chooses server-side encryption, and never sees the passphrase. No analytics, no trackers, no
   third-party scripts in the client (fonts are self-hosted from the build by `next/font`). The report
   body never leaves the browser unless the researcher exports it.
-- **S — security.** The Arkiv writer key and the devnet relayer key are server-only, never
+- **S - security.** The Arkiv writer key and the devnet relayer key are server-only, never
   `NEXT_PUBLIC_`, and the browser is never asked to sign for someone else. Report bodies are
   AES-GCM encrypted with a passphrase the server never sees; only a SHA-256 fingerprint is anchored.
   The vault has no admin withdrawal, no upgrade key and no fee; the recipient is fixed at funding

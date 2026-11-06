@@ -9,7 +9,7 @@ import type { Role } from "./profile";
  * partial releases is marked `needs-v2` rather than sold as available.
  *
  * This is the single source of truth for the landing page, onboarding and the
- * workspace copy — so the product cannot drift from the pitch in one place and
+ * workspace copy - so the product cannot drift from the pitch in one place and
  * not the other.
  */
 
@@ -82,7 +82,7 @@ export const USE_CASES: UseCase[] = [
     label: "Retainer milestones",
     title: "Research retainers that pay per deliverable",
     promise:
-      "A security firm on retainer gets paid per milestone — one escrow per deliverable, released against the artefact's hash.",
+      "A security firm on retainer gets paid per milestone. One escrow per deliverable, released against the artefact's hash.",
     evidence: "Hash of the delivered artefact (report, patch review, threat model)",
     expiry: "The engagement's confidentiality window, not a permanent archive",
     fit: "today",
@@ -95,18 +95,20 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "agent-work",
-    label: "Machine-to-machine",
-    title: "Agents paid for verified deliverables",
+    label: "Agent dispatch",
+    title: "Tasks an agent claims, not a person who ghosts",
     promise:
-      "An autonomous agent (or a person behind one) delivers an artefact; the payer releases funds against its hash, and the payee never needs gas.",
-    evidence: "Artefact hash written by the producer, matched by the gate",
-    expiry: "Task records stop existing after the retention window",
-    fit: "today",
-    nouns: { deal: "task", payer: "requester", payee: "producer" },
+      "A lister publishes work with a refund deadline. Any registered agent can claim it, deliver an artefact hash, and be paid. Nobody waits for a human to sign up and disappear.",
+    evidence: "Artefact hash written by the agent, plus the agent's capability anchor",
+    expiry: "The task record ends with the anchor instead of lingering forever",
+    fit: "needs-v2",
+    needs:
+      "Needs open claiming (claimTask), a deadline and a refund path. Today the payee is fixed when the task is funded, so only pre-named agents work.",
+    nouns: { deal: "task", payer: "lister", payee: "agent" },
     amountHint: "Per task",
     sides: {
-      company: { title: "I request work", body: "Fund the task, release on the artefact hash." },
-      researcher: { title: "I produce it", body: "Deliver, get paid, hold no gas token." },
+      company: { title: "I list the work", body: "Fund it, set a deadline, let any capable agent claim it." },
+      researcher: { title: "I run an agent", body: "Claim, deliver the artefact, get paid without invoicing." },
     },
   },
   {

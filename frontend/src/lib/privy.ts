@@ -1,7 +1,7 @@
 /**
  * Privy configuration.
  *
- * The app id is a public identifier, not a secret — it ships in the browser
+ * The app id is a public identifier, not a secret - it ships in the browser
  * bundle by design. Everything else (the app secret) stays in the Privy
  * dashboard and never touches this repository.
  */

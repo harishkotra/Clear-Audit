@@ -1,4 +1,4 @@
-# Schema — ClearAudit on Arkiv
+# Schema - ClearAudit on Arkiv
 
 One schema, two entity kinds, everything scoped by chain.
 
@@ -10,9 +10,9 @@ One schema, two entity kinds, everything scoped by chain.
 
 | Attribute | Type | Queried? | Meaning |
 | --- | --- | --- | --- |
-| `kind` | `str` | **yes** | `zero_day_report` — the discriminator every query starts with |
+| `kind` | `str` | **yes** | `zero_day_report` - the discriminator every query starts with |
 | `chainId` | `u64` | **yes** | `5042002` (Arc) or `1337` (EF devnet artifact). Both chains have a deal #0 |
-| `dealId` | `u64` | **yes** | `BountyVault.nextDealId` counter — the join key to the chain |
+| `dealId` | `u64` | **yes** | `BountyVault.nextDealId` counter - the join key to the chain |
 | `protocolWallet` | `addr` | no | Company that funded the bounty (checked against `deal.company`) |
 | `whitehatWallet` | `addr` | no | Recorded beneficiary (checked against `deal.researcher`) |
 | `amount` | `u64` | no | Bounty amount in token base units (checked against `deal.amount`) |
@@ -21,7 +21,7 @@ One schema, two entity kinds, everything scoped by chain.
 | `expiresAt` | `u64` | **yes** | Unix seconds, mirrored from the entity TTL so a query can filter on it |
 
 **Owner:** the writer wallet. No user signs an Arkiv transaction, so an entity cannot be edited by a
-company or a researcher — only created by the protocol, and only once per deal while it is live
+company or a researcher - only created by the protocol, and only once per deal while it is live
 (a second anchor for the same deal with a different hash is refused with `409`).
 
 **Expiration:** 30 days, set with `ExpirationTime.fromDays(30)`. It is not a cron job: Rabdi stops
@@ -61,6 +61,6 @@ if (BigInt(anchor.amount) !== deal.amount) reject("Anchor amount does not match 
 ## Why `chainId` is an attribute and not a namespace
 
 The EF track runs a second vault on chain `1337` with its own `dealId` counter starting at 0. Without
-`chainId`, an anchor written for the devnet demo would satisfy the guard for Arc deal #0 — a
+`chainId`, an anchor written for the devnet demo would satisfy the guard for Arc deal #0 - a
 cross-network payout. Adding the attribute was a two-line change to the schema and one clause to the
 query; it is the difference between "evidence exists" and "evidence exists *for this bounty*".

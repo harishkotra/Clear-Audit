@@ -49,7 +49,7 @@ export async function fingerprintReport(text: string, passphrase?: string): Prom
 
   const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, body);
 
-  // Header: salt | iv | ciphertext — enough for the company to decrypt offline.
+  // Header: salt | iv | ciphertext - enough for the company to decrypt offline.
   const packed = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
   packed.set(salt, 0);
   packed.set(iv, salt.length);

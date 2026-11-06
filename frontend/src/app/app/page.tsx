@@ -64,7 +64,7 @@ export default function WorkspaceHome() {
       subtitle={
         isCompany
           ? `Settle ${uc.label.toLowerCase()}s: escrow the amount, release it when the evidence matches.`
-          : `Your ${noun}s and payments — evidence-backed, no invoices in between.`
+          : `Your ${noun}s and payments, evidence-backed, with no invoices in between.`
       }
       actions={
         <Link href="/app/rewards" className="btn btn-primary">
@@ -102,7 +102,7 @@ export default function WorkspaceHome() {
           </p>
           <ol className="mt-4 space-y-3">
             {[
-              { done: true, title: "Create your workspace", body: "Done — your profile is stored locally." },
+              { done: true, title: "Create your workspace", body: "Done. Your profile is stored locally." },
               {
                 done: connected,
                 title: "Connect a wallet",

@@ -137,7 +137,7 @@ export function GaslessPanel({ open }: { open: OpenDeal[] }) {
             <div className="flex gap-2">
               <dt className="w-16 shrink-0 text-zinc-500">Block</dt>
               <dd className="font-mono text-zinc-300">
-                {receipt.blockNumber ?? "—"}
+                {receipt.blockNumber ?? "-"}
                 {receipt.gasUsed !== null && (
                   <span className="text-zinc-500"> · {receipt.gasUsed.toLocaleString()} gas</span>
                 )}
@@ -155,7 +155,7 @@ export function GaslessPanel({ open }: { open: OpenDeal[] }) {
                           }`,
                       )
                       .join(" · ")
-                  : "—"}
+                  : "-"}
               </dd>
             </div>
           </dl>

@@ -58,7 +58,7 @@ export async function submitClaim(params: {
     chainId: 1337,
     sender: params.protocolAddress,
     nonceSeq: BigInt(nonce),
-    // One VERIFY frame, untargeted — this devnet revision rejects a second one
+    // One VERIFY frame, untargeted - this devnet revision rejects a second one
     // ("frame 1 is a VERIFY frame after the validation prefix (ends at index 0)")
     // and rejects a VERIFY frame whose target is not the sender. A paymaster
     // cannot pay for this transaction, so gas comes from the sender: the

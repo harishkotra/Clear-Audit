@@ -1,4 +1,4 @@
-# ClearClaim / ClearAudit — Senior Engineering Audit
+# ClearClaim / ClearAudit - Senior Engineering Audit
 
 > **Historical document.** This is the pre-build audit that produced the current scope (2026-11-05).
 > Several findings below were fixed afterwards; addresses and file names may be stale. For the
@@ -38,7 +38,7 @@ decimals** (the ERC-20 view uses 6). The repo configures `nativeCurrency: ETH` a
 
 ---
 
-## P0 — submission blockers
+## P0 - submission blockers
 
 ### P0-1. Funded private keys are shipped to the browser (and one is hardcoded)
 
@@ -74,7 +74,7 @@ flow.
 
 Recommendation: **A** for the EF track, B as the Arc production path until A ships.
 
-### P0-3. There is no cross-chain settlement — the demo is two disconnected escrows
+### P0-3. There is no cross-chain settlement - the demo is two disconnected escrows
 
 Escrow money is on Arc (5042002). The gasless claim executes on the EF devnet (1337) against a
 *different* vault, a *different* deal and a *different* token. There is no bridge, message,
@@ -112,9 +112,9 @@ expiry test. A guard that can't fail is not a bounty.
 
 | Surface | Story |
 |---|---|
-| `submission-dossier.md` | ClearClaim — freelancer milestone escrow, client/freelancer |
-| `contracts/` | ClearAudit — bug bounty, protocol/whitehat/arbitrator |
-| `README.md` | ClearClaim — gasless B2B escrow |
+| `submission-dossier.md` | ClearClaim - freelancer milestone escrow, client/freelancer |
+| `contracts/` | ClearAudit - bug bounty, protocol/whitehat/arbitrator |
+| `README.md` | ClearClaim - gasless B2B escrow |
 | `arkiv/schema.md` | `escrow_job` |
 | `/` | ClearAudit console |
 | `/client` | "Protocol Portal" |
@@ -133,10 +133,10 @@ A judge cannot tell what you built. **Pick one and delete the rest.** Recommenda
 
 ---
 
-## P1 — security & correctness (fix before any real money)
+## P1 - security & correctness (fix before any real money)
 
 1. **`BountyVault` has no whitehat claim path** (see P0-2). It also forces the protocol to know the
-   whitehat address at creation — incompatible with anonymous bug bounties. A bounty should be
+   whitehat address at creation - incompatible with anonymous bug bounties. A bounty should be
    claimable by whoever proves a report commitment.
 2. **Single-EOA trust.** `arbitrator` and `owner` are single EOAs. No multisig, timelock or pause.
    "Zero-trust" in the comments is inaccurate.
@@ -168,7 +168,7 @@ A judge cannot tell what you built. **Pick one and delete the rest.** Recommenda
 
 ---
 
-## P2 — product & startup gaps
+## P2 - product & startup gaps
 
 - **No revenue model.** Sponsorship is explicitly free and nobody pays for settlement. Needed:
   basis-point settlement fee (e.g. 1.5–2.5% vs Immunefi's ~10%), or protocol SaaS subscription,
@@ -190,16 +190,16 @@ A judge cannot tell what you built. **Pick one and delete the rest.** Recommenda
 
 ## What actually wins the three bounties
 
-**EF alt mempool** — must show an admitted frame tx where the *user* (whitehat) signs and a
+**EF alt mempool** - must show an admitted frame tx where the *user* (whitehat) signs and a
 stateful paymaster sponsors based on real deal state. That is a genuinely interesting use of "more
 flexible state access in validation." Today the demo uses `SponsorPaymaster` (pays for anyone) and
 the protocol signs. Fix the signer and the paymaster, and the EF story becomes strong.
 
-**Arc** — must use Arc as the settlement layer with **native USDC** (18 dec, gas token), contracts
+**Arc** - must use Arc as the settlement layer with **native USDC** (18 dec, gas token), contracts
 built/deployed via Arc Studio, and a flow that needs stable value. Mock USDC + ETH gas labels
 undermine the exact thesis Arc is judging.
 
-**Arkiv** — must have live entities, a fail-closed query that changes on-chain behavior, a visible
+**Arkiv** - must have live entities, a fail-closed query that changes on-chain behavior, a visible
 countdown, and the `schema.md`/`why-arkiv.md`/`friction.md`/`reach.md` set. Today: 0 entities,
 fail-open, schema mismatch. This is the cheapest bounty to actually win.
 
@@ -217,7 +217,7 @@ fail-open, schema mismatch. This is the cheapest bounty to actually win.
 - Freelancer milestone escrow is commoditized (Request Finance, Bitwage, Upwork) and the current
   two-party approval flow has no differentiator.
 
-If you keep ClearClaim instead, that's defensible too — but then the entire contract surface
+If you keep ClearClaim instead, that's defensible too - but then the entire contract surface
 (`BountyVault`, whitehat/arbitrator, `zero_day_report`) must be rewritten, which is not a 48h move.
 
 ---
@@ -257,7 +257,7 @@ If you keep ClearClaim instead, that's defensible too — but then the entire co
 - `npm run verify` = typecheck + lint + forge test + secret scan.
 - A real `/api/state` that reads `nextDealId`, `getDeal`, token balances, and Arkiv expiry.
 - A demo "reset" script that seeds a fresh deal so the claim never hits a `Released` deal.
-- Put the real EF frame tx hash, Arc explorer links, and Arkiv entity keys in the README — generated
+- Put the real EF frame tx hash, Arc explorer links, and Arkiv entity keys in the README - generated
   from a script, not typed by hand.
 
 ---

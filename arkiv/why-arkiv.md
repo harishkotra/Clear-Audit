@@ -1,6 +1,6 @@
 # Why Arkiv
 
-If the anchors sat in Postgres, three things would break — and all three are things a user notices.
+If the anchors sat in Postgres, three things would break - and all three are things a user notices.
 
 ## 1. The retention window would be a promise, not a property
 
@@ -9,7 +9,7 @@ evidence fingerprint lives 30 days and then does not exist.
 
 In Postgres that is `DELETE FROM reports WHERE created_at < now() - interval '30 days'` in a cron
 job: one failed deploy, one paused worker, one restored backup, and the window silently becomes
-"forever". On Arkiv it is `ExpirationTime.fromDays(30)` enforced by the storage layer — the entity
+"forever". On Arkiv it is `ExpirationTime.fromDays(30)` enforced by the storage layer - the entity
 stops being served whether or not our code runs. We do not have to be trusted to delete it.
 
 The user-visible consequence: the countdown on the reward card and the "Anchor required" release

@@ -33,14 +33,14 @@ properties, which breaks wagmi's built-in `injected()` connector during cleanup
 
 ## Data flow for a payout
 
-1. `createBounty(researcher, amount)` — vault pulls USDC via `transferFrom`, emits `BountyCreated`.
-2. `POST /api/reports` — validates the deal is `Open`, anchors
+1. `createBounty(researcher, amount)` - vault pulls USDC via `transferFrom`, emits `BountyCreated`.
+2. `POST /api/reports` - validates the deal is `Open`, anchors
    `{chainId, dealId, hash, severity, researcher, company, amount}` in Arkiv with a 30-day expiry.
    A second anchor for a live deal with a different hash is refused with `409`.
-3. `POST /api/release-guard` — the gate the UI calls before signing. It re-reads the deal from Arc
+3. `POST /api/release-guard` - the gate the UI calls before signing. It re-reads the deal from Arc
    and requires a live, unexpired Arkiv anchor whose researcher, company and amount match the chain.
    No anchor → `403`, nothing is signed.
-4. `releaseBounty(dealId, 0, 0x0)` — protocol caller; the vault pays the recorded researcher, sets
+4. `releaseBounty(dealId, 0, 0x0)` - protocol caller; the vault pays the recorded researcher, sets
    status to `Released`. There is no fee term in the deployed contract.
 5. `/api/state` reflects the new status. Nothing is cached beyond a 20-second client poll.
 

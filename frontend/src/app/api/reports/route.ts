@@ -14,7 +14,7 @@ import { ARC_CHAIN_ID, DEVNET_CHAIN_ID } from "@/lib/constants";
 const SEVERITIES = new Set(["critical", "high", "medium", "low"]);
 const SUPPORTED_CHAINS = new Set([ARC_CHAIN_ID, DEVNET_CHAIN_ID]);
 
-/** GET /api/reports?dealId=0&chainId=5042002 — list live report anchors. */
+/** GET /api/reports?dealId=0&chainId=5042002 - list live report anchors. */
 export async function GET(req: Request) {
   try {
     const params = new URL(req.url).searchParams;
@@ -60,7 +60,7 @@ export async function GET(req: Request) {
 }
 
 /**
- * POST /api/reports — anchor a finding for a reward.
+ * POST /api/reports - anchor a finding for a reward.
  *
  * Only the deal id, chain id, hash and severity come from the client. The
  * company, the researcher and the amount are read from the corresponding

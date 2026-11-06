@@ -25,7 +25,7 @@ Deployment transaction:
 
 The vault and the paymaster are created **inside the deployer constructor**, so the two immutables
 (`vault.paymaster`, `paymaster.vault`) are wired before either address is usable. The deployer then
-asserts the wiring and reverts on mismatch — a partial deployment cannot survive.
+asserts the wiring and reverts on mismatch - a partial deployment cannot survive.
 
 ## Verify (read-only, no keys)
 
@@ -90,7 +90,7 @@ Consequences, stated plainly:
 
 - A researcher can always `disputeBounty` (freeze the funds).
 - `resolveDispute` can only be called by that wallet, so a frozen bounty needs Arc Studio to act.
-- Nothing else — not the company, not the researcher, not an admin — can move a disputed bounty.
+- Nothing else - not the company, not the researcher, not an admin - can move a disputed bounty.
 
 The contracts are correct; this is a deployment-configuration choice. A production deployment sets
 `ARBITRATOR` to a dedicated address (multisig or arbitration service) that the project controls.

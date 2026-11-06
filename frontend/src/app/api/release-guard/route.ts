@@ -5,7 +5,7 @@ import { anchorExpirySeconds, findReport, unwrap } from "@/lib/arkiv";
 import { ARC_CHAIN_ID } from "@/lib/constants";
 
 /**
- * POST /api/release-guard — the Anchor is load-bearing.
+ * POST /api/release-guard - the Anchor is load-bearing.
  *
  * The UI calls this before asking the wallet to sign `releaseBounty`. A payout
  * is only allowed when a live, unexpired Arkiv anchor exists for this Arc deal
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     }
 
     if (process.env.REQUIRE_ARKIV_ANCHOR === "false") {
-      console.warn("[release-guard] REQUIRE_ARKIV_ANCHOR=false — anchor gate disabled (demo only)");
+      console.warn("[release-guard] REQUIRE_ARKIV_ANCHOR=false - anchor gate disabled (demo only)");
       return NextResponse.json({ ok: true, anchor: null, gate: "disabled" });
     }
 

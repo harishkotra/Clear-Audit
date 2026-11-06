@@ -13,7 +13,7 @@ import { PRIVY_ENABLED } from "@/lib/privy";
  * Privy owns the login: it renders its own modal with every wallet the visitor
  * actually has (extension, mobile, or an embedded wallet created on sign-up),
  * and one session covers all of them. We therefore render *no* wallet picker of
- * our own — no connector list, no per-extension handshake, none of the
+ * our own - no connector list, no per-extension handshake, none of the
  * `-32603` / `[object Object]` failure modes that came with it.
  */
 
@@ -72,7 +72,7 @@ function ConnectButtonInner({ full = false }: { full?: boolean }) {
           // rather than left active behind a disconnected-looking header.
           void logout();
         }}
-        title={`${walletAddress} — click to sign out`}
+        title={`${walletAddress} - click to sign out`}
         className={`${full ? "btn btn-ghost w-full" : "btn btn-ghost"} font-mono text-xs`}
       >
         {shortAddress(walletAddress)}

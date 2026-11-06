@@ -17,7 +17,7 @@ function usdc6(v: bigint) {
 }
 
 function openTotal(state: Awaited<ReturnType<typeof readDevnetState>> | null) {
-  if (!state) return "—";
+  if (!state) return "-";
   return usdc6(state.openDeals.reduce((sum, d) => sum + d.amount, 0n));
 }
 
@@ -36,11 +36,11 @@ async function DevnetSection() {
         <Stat
           label="Devnet chain"
           value={DEVNET_CHAIN_ID}
-          hint="Separate from Arc — a research artifact, not a bridge"
+          hint="Separate from Arc - a research artifact, not a bridge"
         />
         <Stat
           label="Open bounties"
-          value={state ? state.openDeals.length : "—"}
+          value={state ? state.openDeals.length : "-"}
           hint={state ? `of ${state.deals.length} total on devnet` : "devnet unreachable"}
           accent
         />
@@ -70,7 +70,7 @@ async function DevnetSection() {
               The EF devnet has not produced a block since{" "}
               {new Date(Date.now() - state.head.ageSeconds * 1000).toISOString().slice(0, 16).replace("T", " ")}{" "}
               UTC (head #{state.head.number.toString()}), so a release would hang. The anchor and guard
-              still run — the settlement step answers 503 and submits nothing.
+              still run - the settlement step answers 503 and submits nothing.
             </div>
           ) : state ? (
             <GaslessPanel

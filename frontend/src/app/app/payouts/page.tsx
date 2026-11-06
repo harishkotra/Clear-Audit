@@ -115,7 +115,7 @@ export default function PaymentsPage() {
               body={
                 filter === "all"
                   ? "When a reward is funded it appears here. Every state change is on-chain."
-                  : "Try another filter — there is no data hiding behind it."
+                  : "Try another filter - there is no data hiding behind it."
               }
               action={<Link href="/app/rewards" className="btn btn-ghost">Go to rewards</Link>}
             />

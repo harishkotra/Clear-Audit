@@ -1,5 +1,5 @@
 /**
- * claim.ts — headless version of the EF alt-mempool settlement path.
+ * claim.ts - headless version of the EF alt-mempool settlement path.
  *
  * The in-app demo lives at /app/gasless and calls POST /api/claim. This script
  * is the same flow without a browser, useful for reproducing the sponsored

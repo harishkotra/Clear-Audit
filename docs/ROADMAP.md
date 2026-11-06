@@ -1,4 +1,4 @@
-# ClearAudit — From Hackathon MVP to Fundable Company
+# ClearAudit - From Hackathon MVP to Fundable Company
 
 > **Status (2026-11-07):** this is the plan, not the shipped state. What exists today is in
 > [`README.md`](../README.md) and [`deployments.json`](../deployments.json): one vault on Arc
@@ -7,7 +7,7 @@
 > the product UI.
 
 > One sentence: **ClearAudit lets protocols escrow bug bounties in USDC and pay whitehats
-> instantly, gaslessly, and without forcing researchers to KYC — while the confidential report
+> instantly, gaslessly, and without forcing researchers to KYC - while the confidential report
 > self-destructs on a fixed schedule.**
 
 ---
@@ -20,14 +20,14 @@
   reported exploit is often also a legal admission in some jurisdictions.
 - Protocols want escrow (proof the money exists) but do not want to run a payout desk, a
   dispute process, and a compliance program.
-- Cross-border payouts are slow, expensive, and often routed through a KYC exchange — the
+- Cross-border payouts are slow, expensive, and often routed through a KYC exchange - the
   exact friction that makes a critical report sit in a researcher's notes for a week.
 
 **The wedge.**
 - **Privacy-first:** the report body is never on-chain. Only a ciphertext hash is anchored, and
   the anchor expires. Whitehats can be pseudonymous.
 - **Stablecoin-native settlement:** Arc makes USDC the gas token, so a payout is one asset, one
-  balance, one confirmation — no ETH treasury, no volatile gas.
+  balance, one confirmation - no ETH treasury, no volatile gas.
 - **Gasless for the researcher:** the protocol (or the platform) sponsors settlement. A whitehat
   with zero gas can still get paid.
 - **Escrow + arbitration:** protocols get credible commitment; researchers get a funded target.
@@ -60,20 +60,20 @@
 ## 2. What the product must be (not a two-screen demo)
 
 ### Roles
-- **Protocol** — create a program, fund a bounty, approve a payout, dispute, see receipts.
-- **Whitehat** — discover programs, submit a report, track severity/status, get paid, keep
+- **Protocol** - create a program, fund a bounty, approve a payout, dispute, see receipts.
+- **Whitehat** - discover programs, submit a report, track severity/status, get paid, keep
   identity private.
-- **Arbitrator** — a multisig/committee with a published policy and SLA, not a single EOA.
+- **Arbitrator** - a multisig/committee with a published policy and SLA, not a single EOA.
 
 ### Core flows
-1. **Fund** — protocol deposits USDC into the vault (Arc native USDC, 18 dec). Receipt + on-chain
+1. **Fund** - protocol deposits USDC into the vault (Arc native USDC, 18 dec). Receipt + on-chain
    event + program page.
-2. **Anchor** — report ciphertext stored off-chain (IPFS/Arkiv); hash + severity + expiry anchored.
-3. **Approve** — protocol signs an EIP-712 approval `(dealId, whitehat, amount, nonce, deadline)`.
-4. **Settle** — whitehat (or a relayer) submits the approval; the sponsor pays gas; USDC lands in
+2. **Anchor** - report ciphertext stored off-chain (IPFS/Arkiv); hash + severity + expiry anchored.
+3. **Approve** - protocol signs an EIP-712 approval `(dealId, whitehat, amount, nonce, deadline)`.
+4. **Settle** - whitehat (or a relayer) submits the approval; the sponsor pays gas; USDC lands in
    the whitehat's wallet. One transaction, one receipt.
-5. **Dispute** — either party escalates; arbitrator resolves to one side; funds move once.
-6. **Expire** — after the retention window the anchor is gone; the vault refuses to settle.
+5. **Dispute** - either party escalates; arbitrator resolves to one side; funds move once.
+6. **Expire** - after the retention window the anchor is gone; the vault refuses to settle.
 
 ### Non-negotiables for "premium"
 - Real chain data everywhere. No hardcoded TVL, no fake deal ids, no mock receipts.
@@ -111,7 +111,7 @@ Whitehat wallet ──► Settlement relayer / paymaster (Arc, USDC gas)
 
 ## 4. Two-week plan (post-hackathon)
 
-**Week 1 — correctness and trust**
+**Week 1 - correctness and trust**
 - `BountyVaultV2`: native USDC (`msg.value`), `feeBps` + `feeRecipient`, pull-payment fallback,
   pausable emergency exit, EIP-712 whitehat claim, `Ownable2Step`/multisig ownership.
 - Full Foundry suite: unit + fuzz + invariant + fork tests against Arc. Target >90% branch
@@ -120,7 +120,7 @@ Whitehat wallet ──► Settlement relayer / paymaster (Arc, USDC gas)
 - Replace mock USDC with Arc native USDC everywhere; delete the 6-decimal assumptions.
 - Real `/api/state`, indexer, and a seeded demo environment.
 
-**Week 2 — product and pitch**
+**Week 2 - product and pitch**
 - Three role-based apps (protocol / whitehat / arbitrator), design system, mobile.
 - Embedded wallet onboarding (Circle Wallets is the natural fit on Arc) + email magic link.
 - Report upload (encrypted to protocol pubkey), severity rubric, duplicate detection v0.

@@ -39,7 +39,7 @@ async function main() {
   const page = await client.query(clauses.join(" AND "), {
     select: {
       $key: true,
-      // $expiresAt is a BLOCK NUMBER on Rabdi (2 s blocks), not a timestamp —
+      // $expiresAt is a BLOCK NUMBER on Rabdi (2 s blocks), not a timestamp -
       // selected for display only; liveness is decided by the `expiresAt` attribute.
       $expiresAt: true,
       expiresAt: true,
@@ -85,7 +85,7 @@ async function main() {
     );
   }
   if (live.length === 0) {
-    console.log("  (no live anchors — the payout guard refuses every settlement)");
+    console.log("  (no live anchors - the payout guard refuses every settlement)");
   }
 }
 
