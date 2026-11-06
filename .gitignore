@@ -1,0 +1,41 @@
+# secrets
+.env
+.env.*
+!.env.example
+**/.env.local
+
+# build outputs
+/out/
+/contracts/out/
+/contracts/cache/
+/frontend/.next/
+/frontend/out/
+# foundry deps (forge install)
+/lib/
+node_modules/
+**/node_modules/
+*.tsbuildinfo
+
+# foundry
+/cache/
+/broadcast/
+
+# misc
+.DS_Store
+*.log
+
+# internal / not published
+/submission-dossier.md
+/docs/archive/
+/frontend/AGENTS.md
+/CLAUDE.md
+/AGENTS.md
+
+# local tooling
+.vercel/
+coverage/
+*.local
+
+# stray next builds at repo root
+/.next/
+/frontend/frontend/

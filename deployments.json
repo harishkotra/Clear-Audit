@@ -1,0 +1,88 @@
+{
+  "updatedAt": "2026-11-07",
+  "product": {
+    "name": "ClearAudit",
+    "tagline": "Private bug-bounty payouts",
+    "status": "testnet",
+    "settlementAsset": "USDC"
+  },
+  "chains": {
+    "arcTestnet": {
+      "chainId": 5042002,
+      "caip2": "eip155:5042002",
+      "rpc": "https://rpc.testnet.arc.io",
+      "explorer": "https://explorer.testnet.arc.io",
+      "nativeCurrency": {
+        "name": "USD Coin",
+        "symbol": "USDC",
+        "decimals": 18
+      },
+      "deploymentTool": "Arc Studio CLI",
+      "deploymentTx": "0x201d71d90b110fb3d321f3b86591ab07096b646986632bf044082e1cca12b145",
+      "contracts": {
+        "ClearAuditDeployer": "0x8fcC1436147BF48eCF57C0B4609B5380E7b5756a",
+        "BountyVault": "0x283776AB6c2B139d6097285821AC5EdDe43e115e",
+        "USDCPaymaster": "0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B",
+        "USDC": "0x3600000000000000000000000000000000000000",
+        "EntryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
+      },
+      "roles": {
+        "arbitrator": "0x5B12Ce46C7194aD57d143bC22847224047b1Ef42",
+        "admin": "0x5B12Ce46C7194aD57d143bC22847224047b1Ef42"
+      },
+      "verified": {
+        "at": "2026-11-07",
+        "method": "scripts/verify-deployment.ts (read-only RPC calls against rpc.testnet.arc.io)",
+        "checks": [
+          "RPC chain id == 5042002",
+          "ClearAuditDeployer, BountyVault and USDCPaymaster all have code",
+          "deployment tx status = success",
+          "BountyVault.token() == 0x3600\u20260000 (Arc native USDC ERC-20, 6 decimals)",
+          "BountyVault.paymaster() == USDCPaymaster",
+          "BountyVault.arbitrator() == 0x5B12\u2026Ef42",
+          "USDCPaymaster.vault() == BountyVault",
+          "USDCPaymaster.usdc() == 0x3600\u20260000",
+          "USDCPaymaster.entryPoint() == ERC-4337 EntryPoint v0.7",
+          "USDCPaymaster.owner() == ClearAuditDeployer",
+          "BountyVault.nextDealId() == 0"
+        ]
+      },
+      "notes": [
+        "The vault and paymaster are created inside the ClearAuditDeployer constructor, so neither address is a zero placeholder at wire-up time.",
+        "Arc's native USDC is the gas token (18 decimals) and also exposes an ERC-20 interface at 0x3600\u20260000 with 6 decimals. The vault escrows the 6-decimal interface.",
+        "USDCPaymaster targets ERC-4337 EntryPoint v0.7 (PackedUserOperation, canonical address 0x0000000071727De22E5E9d8BAf0edAc6f37da032).",
+        "ARBITRATOR is the Arc Studio deploy wallet, which is shared across Arc Studio projects and whose key is not held by this repository; dispute resolution requires that wallet to act. See docs/DEPLOYMENT.md."
+      ]
+    },
+    "efAltMempool": {
+      "chainId": 1337,
+      "caip2": "eip155:1337",
+      "rpc": "https://altmempool.forshtat.com/rpc",
+      "readRpc": "https://altmempool.forshtat.com",
+      "role": "EIP-8141 gasless settlement prototype (research artifact, not a bridge)",
+      "contracts": {
+        "BountyVault": "0x8460274B30764c09799f275280CEbA1F1dC5B347",
+        "SponsorPaymaster": "0xA03613a311632EEc5a8bE80CeF034d456d4D6F02"
+      },
+      "referenceTransactions": [
+        {
+          "hash": "0x3ada0c73c3ddafebc669fcf168fb5f2131be7a84d5bf371194cbb33f37d37b43",
+          "description": "gasless release via alt-mempool frame transaction"
+        },
+        {
+          "hash": "0xec8cefbbe307e52f529470a94e2e056c121ce32edfa7f6c6b9d4ed32af0d5ddb",
+          "description": "sponsored release"
+        },
+        {
+          "hash": "0x17c3a071785e00b151e65780560515327cd9fb3d56cd504dfd45d8c8e844fa7d",
+          "description": "sponsored transfer"
+        }
+      ],
+      "notes": [
+        "Deal #0 is already Released. The app never hardcodes a deal id.",
+        "SponsorPaymaster is explicitly demo-only (it sponsors any caller while funded)."
+      ]
+    }
+  },
+  "arbitratorCaveat": "BountyVault.arbitrator is immutable and currently points at the Arc Studio deploy wallet. A fresh deployment can set ARBITRATOR to a project-controlled address."
+}

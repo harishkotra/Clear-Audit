@@ -1,0 +1,138 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
+import Brand from "./Brand";
+import ConnectButton from "./ConnectButton";
+import { BoltIcon, GiftIcon, HomeIcon, PayoutIcon, SettingsIcon, ArrowUpRight } from "./icons";
+import { useProfile, ROLE_LABEL } from "@/lib/profile";
+
+const NAV = [
+  { href: "/app", label: "Overview", icon: HomeIcon },
+  { href: "/app/rewards", label: "Rewards", icon: GiftIcon },
+  { href: "/app/payouts", label: "Payments", icon: PayoutIcon },
+  { href: "/app/gasless", label: "Gasless", icon: BoltIcon },
+  { href: "/app/settings", label: "Settings", icon: SettingsIcon },
+];
+
+export default function AppShell({
+  children,
+  title,
+  subtitle,
+  actions,
+}: {
+  children: ReactNode;
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+}) {
+  const pathname = usePathname();
+  const { profile, clear } = useProfile();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => setOpen(false), [pathname]);
+
+  const nav = (
+    <nav className="flex flex-col gap-1">
+      {NAV.map(({ href, label, icon: Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          className="nav-link"
+          data-active={href === "/app" ? pathname === href : pathname.startsWith(href)}
+        >
+          <Icon className="opacity-80" />
+          {label}
+        </Link>
+      ))}
+    </nav>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#08090d]">
+      {/* Mobile bar */}
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/8 bg-[#08090d]/90 px-4 py-3 backdrop-blur lg:hidden">
+        <Brand href="/app" />
+        <button className="btn btn-ghost h-9 px-3" onClick={() => setOpen(!open)} aria-expanded={open}>
+          {open ? "Close" : "Menu"}
+        </button>
+      </div>
+
+      <div className="mx-auto flex w-full max-w-[1320px]">
+        <aside
+          className={`${
+            open ? "block" : "hidden"
+          } fixed inset-x-0 top-[57px] z-20 border-b border-white/8 bg-[#0b0d13] p-4 lg:sticky lg:top-0 lg:block lg:h-screen lg:w-[248px] lg:shrink-0 lg:border-b-0 lg:border-r lg:bg-transparent lg:p-5`}
+        >
+          <div className="hidden lg:block">
+            <Brand />
+          </div>
+
+          <div className="mt-0 lg:mt-7">
+            <Link
+              href="/app/settings"
+              className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/[0.03] p-2.5 transition hover:bg-white/[0.05]"
+            >
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/8 text-xs font-semibold text-white">
+                {(profile?.name ?? "W").slice(0, 1).toUpperCase()}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[13px] font-medium text-white">
+                  {profile?.name ?? "Your workspace"}
+                </span>
+                <span className="block text-[11px] text-zinc-500">
+                  {profile ? ROLE_LABEL[profile.role] : "Set up profile"}
+                </span>
+              </span>
+            </Link>
+          </div>
+
+          <div className="mt-5">{nav}</div>
+
+          <div className="mt-6 border-t border-white/8 pt-4">
+            <a
+              href="https://explorer.testnet.arc.io"
+              target="_blank"
+              rel="noreferrer"
+              className="nav-link text-[13px]"
+            >
+              Arc explorer
+              <ArrowUpRight className="ml-auto h-3.5 w-3.5 opacity-60" />
+            </a>
+            <div className="mt-2 flex items-center gap-2 px-2.5 py-1.5 text-[11px] text-zinc-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+              Arc Testnet
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2">
+            <ConnectButton full />
+            {profile && (
+              <button
+                onClick={() => {
+                  clear();
+                  window.location.href = "/";
+                }}
+                className="text-left text-[11px] text-zinc-600 hover:text-zinc-400"
+              >
+                Sign out
+              </button>
+            )}
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 px-4 pb-16 pt-6 sm:px-6 lg:px-10 lg:pt-9">
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-white">{title}</h1>
+              {subtitle && <p className="mt-1 max-w-2xl text-sm text-zinc-500">{subtitle}</p>}
+            </div>
+            {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+          </header>
+          <div className="mt-7">{children}</div>
+        </main>
+      </div>
+    </div>
+  );
+}
