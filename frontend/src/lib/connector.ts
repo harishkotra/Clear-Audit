@@ -72,6 +72,48 @@ async function request<T>(method: string, params?: unknown): Promise<T> {
  * connector never touches the event emitter. Accounts and chain are re-read on
  * focus and after every write instead of being pushed.
  */
+/**
+ * Accounts, the long way round.
+ *
+ * Trust Wallet's extension answers `eth_requestAccounts` with a plain
+ * `{code:-32603, message:"An internal error has occurred."}` on some builds,
+ * while still honouring `eth_accounts` and `wallet_requestPermissions`. MetaMask
+ * wants the opposite order. Rather than detect the wallet by user-agent in the
+ * browser, walk the strategies and stop at the first that yields an account. A
+ * user who actively rejects (4001) stops the walk immediately — that choice is
+ * not an error to route around.
+ */
+async function requestAccounts(): Promise<readonly `0x${string}`[]> {
+  const reject = (e: unknown) => /rejected|denied|cancel|4001/i.test(toError(e).message);
+  const strategies: Array<[string, () => Promise<unknown>]> = [
+    ["eth_requestAccounts", () => request("eth_requestAccounts")],
+    ["eth_requestAccounts([])", () => request("eth_requestAccounts", [])],
+    [
+      "wallet_requestPermissions",
+      async () => {
+        await request("wallet_requestPermissions", [{ eth_accounts: {} }]);
+        return request("eth_accounts");
+      },
+    ],
+    ["eth_accounts", () => request("eth_accounts")],
+  ];
+
+  let last: unknown = new Error("No browser wallet found.");
+  for (const [, run] of strategies) {
+    try {
+      const accounts = await run();
+      if (Array.isArray(accounts) && accounts.length > 0) {
+        return accounts as readonly `0x${string}`[];
+      }
+      last = new Error("The wallet returned no accounts.");
+    } catch (e) {
+      if (reject(e)) throw e;
+      last = e;
+    }
+  }
+  throw toError(last);
+}
+
 export function browserWallet(): CreateConnectorFn {
   const make = () => ({
     id: "browser-wallet",
@@ -79,7 +121,7 @@ export function browserWallet(): CreateConnectorFn {
     type: "injected" as const,
 
     async connect() {
-      const accounts = await request<readonly `0x${string}`[]>("eth_requestAccounts");
+      const accounts = await requestAccounts();
       const chainId = Number(await request<string>("eth_chainId"));
       return { accounts, chainId };
     },

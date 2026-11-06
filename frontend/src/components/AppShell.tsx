@@ -86,9 +86,14 @@ export default function AppShell({
             reads a separate <span className="text-zinc-300">EIP-8141 devnet</span> (chain 1337) for the
             research artifact on the gasless page. Connecting switches nothing until you ask it to.
           </div>
-          <Link href="/" className="mt-8 text-[12px] text-zinc-600 hover:text-zinc-400">
-            ← Back to the site
-          </Link>
+          <div className="mt-8 flex items-center gap-4 text-[12px]">
+            <Link href="/connect-check" className="text-zinc-500 underline decoration-white/20 underline-offset-4 hover:text-zinc-300">
+              Wallet not connecting? Run a check
+            </Link>
+            <Link href="/" className="text-zinc-600 hover:text-zinc-400">
+              ← Back to the site
+            </Link>
+          </div>
         </div>
       </div>
     );
