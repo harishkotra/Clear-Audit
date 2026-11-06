@@ -98,20 +98,22 @@ async function requestAccounts(): Promise<readonly `0x${string}`[]> {
     ["eth_accounts", () => request("eth_accounts")],
   ];
 
-  let last: unknown = new Error("No browser wallet found.");
+  // Keep the first real failure: the last strategy is a passive `eth_accounts`
+  // that always "succeeds" with an empty list, and reporting that would hide the
+  // wallet's actual complaint.
+  let firstError: unknown = null;
   for (const [, run] of strategies) {
     try {
       const accounts = await run();
       if (Array.isArray(accounts) && accounts.length > 0) {
         return accounts as readonly `0x${string}`[];
       }
-      last = new Error("The wallet returned no accounts.");
     } catch (e) {
       if (reject(e)) throw e;
-      last = e;
+      firstError ??= e;
     }
   }
-  throw toError(last);
+  throw toError(firstError ?? new Error("The wallet returned no accounts."));
 }
 
 export function browserWallet(): CreateConnectorFn {

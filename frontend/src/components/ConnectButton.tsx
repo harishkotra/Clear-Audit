@@ -59,6 +59,7 @@ export default function ConnectButton({ full = false }: { full?: boolean }) {
   const { switchChainAsync, isPending: switching } = useSwitchChain();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [failedConnector, setFailedConnector] = useState<string | null>(null);
 
   async function connectAny() {
     const connector = pick(connectors);
@@ -72,12 +73,16 @@ export default function ConnectButton({ full = false }: { full?: boolean }) {
       await connectAsync({ connector });
     } catch (e: unknown) {
       setFailure(`${connector.name}: ${explain(describe(e))}`);
+      setFailedConnector(connector.id);
     } finally {
       setBusy(false);
     }
   }
 
   const cls = full ? "btn btn-primary w-full" : "btn btn-primary";
+  // Offered only after an injected wallet has refused: a wallet that cannot
+  // answer EIP-1193 still works through the mobile app over WalletConnect.
+  const wcAvailable = connectors.find((c) => c.id === "walletConnect");
 
   if (isConnected && chainId !== ARC_CHAIN_ID) {
     return (
@@ -147,6 +152,24 @@ export default function ConnectButton({ full = false }: { full?: boolean }) {
         <span className={`${full ? "" : "text-right"} text-[10.5px] leading-snug text-red-400/90`}>
           {failure.split("\n")[0].slice(0, 120)}
         </span>
+      )}
+      {failure && wcAvailable && failedConnector !== wcAvailable.id && (
+        <button
+          onClick={async () => {
+            setBusy(true);
+            setFailure(null);
+            try {
+              await connectAsync({ connector: wcAvailable });
+            } catch (e: unknown) {
+              setFailure(`${wcAvailable.name}: ${explain(describe(e))}`);
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className={`${full ? "" : "self-end"} text-[10.5px] text-zinc-500 underline decoration-white/20 underline-offset-4 hover:text-zinc-300`}
+        >
+          Use WalletConnect instead
+        </button>
       )}
     </div>
   );

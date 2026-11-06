@@ -36,6 +36,7 @@ export default function ConnectCheck() {
         : "missing — no injected wallet on this origin",
     });
     out.push({ label: "origin", ok: true, detail: `${location.protocol}//${location.host}` });
+    out.push({ label: "user agent", ok: true, detail: navigator.userAgent.slice(0, 160) });
     if (!eth) {
       setProbes(out);
       setRunning(false);
@@ -71,7 +72,12 @@ export default function ConnectCheck() {
     await probe("eth_accounts", "eth_accounts");
     await probe("eth_requestAccounts", "eth_requestAccounts", undefined, true);
     await probe("eth_requestAccounts([])", "eth_requestAccounts", [], true);
+    await probe("wallet_getPermissions", "wallet_getPermissions");
     await probe("wallet_requestPermissions", "wallet_requestPermissions", [{ eth_accounts: {} }]);
+    await probe("wallet_switchEthereumChain(Arc)", "wallet_switchEthereumChain", [
+      { chainId: "0x4cef52" },
+    ]);
+    await probe("eth_requestAccounts (after switch)", "eth_requestAccounts", undefined, true);
     await probe("eth_accounts (after permission)", "eth_accounts", undefined, true);
 
     setProbes(out);
