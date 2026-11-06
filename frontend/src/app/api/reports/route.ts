@@ -47,6 +47,7 @@ export async function GET(req: Request) {
       amount: String(unwrap(e.amount) ?? ""),
       encryptedPayloadHash: unwrap(e.encryptedPayloadHash) ?? null,
       severity: unwrap(e.severity) ?? null,
+      criteriaHash: unwrap(e.criteriaHash) ?? null,
       expiresAt: anchorExpirySeconds(e) !== null ? String(anchorExpirySeconds(e)) : null,
     }));
 
@@ -143,6 +144,7 @@ export async function POST(req: Request) {
       amount: deal.amount,
       encryptedPayloadHash,
       severity,
+      criteriaHash: "criteriaHash" in deal ? (deal as { criteriaHash?: `0x${string}` }).criteriaHash : undefined,
     });
 
     return NextResponse.json({

@@ -17,41 +17,50 @@
         "symbol": "USDC",
         "decimals": 18
       },
-      "deploymentTool": "Arc Studio CLI",
-      "deploymentTx": "0x201d71d90b110fb3d321f3b86591ab07096b646986632bf044082e1cca12b145",
+      "deploymentTool": "forge script (Arc Studio quota exhausted)",
+      "sourceOfTruth": "deployments.arc.json",
+      "deploymentTx": "0x31a80755a47ccdeb1fd8a29337e8f14a08ea913c78989f7b6030ee4800723f7c",
       "contracts": {
-        "ClearAuditDeployer": "0x8fcC1436147BF48eCF57C0B4609B5380E7b5756a",
-        "BountyVault": "0x283776AB6c2B139d6097285821AC5EdDe43e115e",
-        "USDCPaymaster": "0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B",
+        "BountyVault": "0x2334493e0EeD42b0E45fF8E64862dBDA50A41772",
         "USDC": "0x3600000000000000000000000000000000000000",
-        "EntryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
+        "paymaster": "0x0000000000000000000000000000000000000000"
       },
       "roles": {
-        "arbitrator": "0x5B12Ce46C7194aD57d143bC22847224047b1Ef42",
-        "admin": "0x5B12Ce46C7194aD57d143bC22847224047b1Ef42"
+        "arbitrator": "0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2",
+        "admin": "0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2"
+      },
+      "superseded": {
+        "BountyVaultV2": "0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593",
+        "BountyVaultV2tx": "0x167899b66fbdaf259770a12e18d6f525c6ec1a01c109c8d1c9de38b03a263e5d",
+        "ClearAuditDeployer": "0x8fcC1436147BF48eCF57C0B4609B5380E7b5756a",
+        "BountyVaultV1": "0x283776AB6c2B139d6097285821AC5EdDe43e115e",
+        "USDCPaymaster": "0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B",
+        "deploymentTx": "0x201d71d90b110fb3d321f3b86591ab07096b646986632bf044082e1cca12b145",
+        "arbitrator": "0x5B12Ce46C7194aD57d143bC22847224047b1Ef42"
       },
       "verified": {
         "at": "2026-11-07",
         "method": "scripts/verify-deployment.ts (read-only RPC calls against rpc.testnet.arc.io)",
         "checks": [
           "RPC chain id == 5042002",
-          "ClearAuditDeployer, BountyVault and USDCPaymaster all have code",
-          "deployment tx status = success",
-          "BountyVault.token() == 0x3600\u20260000 (Arc native USDC ERC-20, 6 decimals)",
-          "BountyVault.paymaster() == USDCPaymaster",
-          "BountyVault.arbitrator() == 0x5B12\u2026Ef42",
-          "USDCPaymaster.vault() == BountyVault",
-          "USDCPaymaster.usdc() == 0x3600\u20260000",
-          "USDCPaymaster.entryPoint() == ERC-4337 EntryPoint v0.7",
-          "USDCPaymaster.owner() == ClearAuditDeployer",
-          "BountyVault.nextDealId() == 0"
+          "BountyVault v3 has code",
+          "deployment tx status = success, block 71035461",
+          "BountyVault.token() == 0x3600…0000 (Arc native USDC ERC-20, 6 decimals)",
+          "BountyVault.paymaster() == 0",
+          "BountyVault.arbitrator() == 0x65B5…0ed2",
+          "BountyVault.challengeWindow() == 300",
+          "release(uint256) has one argument",
+          "commitEvidence / canSettle / settleAfterChallenge present",
+          "deal #0 is Open (5 USDC named payee)"
         ]
       },
       "notes": [
-        "The vault and paymaster are created inside the ClearAuditDeployer constructor, so neither address is a zero placeholder at wire-up time.",
-        "Arc's native USDC is the gas token (18 decimals) and also exposes an ERC-20 interface at 0x3600\u20260000 with 6 decimals. The vault escrows the 6-decimal interface.",
-        "USDCPaymaster targets ERC-4337 EntryPoint v0.7 (PackedUserOperation, canonical address 0x0000000071727De22E5E9d8BAf0edAc6f37da032).",
-        "ARBITRATOR is the Arc Studio deploy wallet, which is shared across Arc Studio projects and whose key is not held by this repository; dispute resolution requires that wallet to act. See docs/DEPLOYMENT.md."
+        "Live settlement is BountyVault v3. v2 and v1 are superseded and still on chain.",
+        "v3 was deployed with forge script because the Arc Studio session was quota-exhausted.",
+        "Arc's native USDC is the gas token (18 decimals) and also exposes an ERC-20 interface at 0x3600…0000 with 6 decimals. The vault escrows the 6-decimal interface.",
+        "v2 has no fee path, so paymaster is the zero address on purpose. 4337 sponsorship is not a product flow on Arc.",
+        "ARBITRATOR is the project wallet 0x65B5…0ed2, which this repository can operate. See docs/DEPLOYMENT.md.",
+        "contracts/BountyVault.sol is v3 (on-chain evidence). It is not the live address until a Studio deploy. Feature-detect via challengeWindow()."
       ]
     },
     "efAltMempool": {
@@ -94,5 +103,5 @@
       "researcher": "0xBEEF00000000000000000000000000000000BEEf"
     }
   },
-  "arbitratorCaveat": "BountyVault.arbitrator is immutable and currently points at the Arc Studio deploy wallet. A fresh deployment can set ARBITRATOR to a project-controlled address."
+  "arbitratorCaveat": "Live v2 arbitrator is the project wallet 0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2. v1 pointed at the shared Arc Studio wallet."
 }

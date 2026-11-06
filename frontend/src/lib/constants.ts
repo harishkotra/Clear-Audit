@@ -17,9 +17,9 @@ export const DEVNET_CHAIN_ID = 1337;
 
 // ───────────────────────── Arc Testnet (product) ────────────────
 
-/** v2 vault: open tasks, deadlines, one-argument release, and no fee path. */
+/** v3 vault: on-chain evidence gate, open tasks, one-argument release, no fee. */
 export const VAULT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_ADDRESS ??
-  "0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593") as `0x${string}`;
+  "0x2334493e0EeD42b0E45fF8E64862dBDA50A41772") as `0x${string}`;
 /** v1 vault, kept only so the EF devnet prototype keeps its own wiring straight. */
 export const VAULT_V1_ADDRESS = "0x283776AB6c2B139d6097285821AC5EdDe43e115e" as `0x${string}`;
 /** v2 has no paymaster: with no fee to sponsor, there is nothing for one to do. */

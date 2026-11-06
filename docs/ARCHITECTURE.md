@@ -39,14 +39,16 @@ properties, which breaks wagmi's built-in `injected()` connector during cleanup
 2. `claimTask(id)` - on an open task, the first caller becomes the payee and `claimedAt` is recorded.
    From then on that address is the only one the vault can pay.
 3. `POST /api/reports` - validates the deal is `Open`, anchors
-   `{chainId, dealId, hash, severity, payee, payer, amount}` in Arkiv with a 30-day expiry. A second
+   `{chainId, dealId, hash, severity, payee, payer, amount, criteriaHash}` in Arkiv with a 30-day expiry. A second
    anchor for a live deal with a different hash is refused with `409`.
 4. `POST /api/release-guard` - the gate the UI calls before signing. It re-reads the deal from Arc
-   and requires a live, unexpired Arkiv anchor whose payee, payer and amount match the chain. No
-   anchor → `403`, nothing is signed.
+   and requires a live, unexpired Arkiv anchor whose payee, payer, amount and (when set) criteriaHash
+   match the chain. No anchor → `403`, nothing is signed. `/evidence` re-runs the same checks in public.
 5. `release(id)` - the payer signs. It takes no recipient and no amount, so the vault can only pay
    the recorded payee the recorded amount. Status becomes `Released`. If the deadline passes first,
-   anyone may call `refundExpired(id)` and the escrow returns to the payer.
+   anyone may call `refundExpired(id)` and the escrow returns to the payer. On a vault that has
+   `commitEvidence`, release also requires a live on-chain fingerprint. The live v3 address
+   enforces that; `/api/release-guard` still re-checks Arkiv.
 6. `/api/state` reflects the new status. Nothing is cached beyond a 20-second client poll.
 
 The EF devnet path (`/api/claim`, `/app/gasless`) runs the same Arkiv gate against chain `1337` and

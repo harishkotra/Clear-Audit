@@ -71,7 +71,7 @@ contract ClearAuditDeployer {
         // The vault receives the actual future paymaster address, never a
         // zero/burn placeholder. Both creations share this deployment transaction;
         // any constructor or invariant failure rolls the entire transaction back.
-        vault = new BountyVault(token, predictedPaymaster, arbitrator);
+        vault = new BountyVault(token, predictedPaymaster, arbitrator, 5 minutes);
         paymaster = new USDCPaymaster(entryPoint, address(vault), token);
         if (address(paymaster) != predictedPaymaster) revert PredictionMismatch();
         assert(vault.paymaster() == address(paymaster));

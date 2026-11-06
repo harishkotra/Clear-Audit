@@ -12,7 +12,9 @@ import { useProfile } from "@/lib/profile";
 import { useCaseById } from "@/lib/usecases";
 import AgentDispatch from "@/components/AgentDispatch";
 import { fingerprintReport, downloadBlob } from "@/lib/report";
+import { ARBITRATOR_ADDRESS } from "@/lib/constants";
 import { money, shortAddress, timeLeft } from "@/lib/format";
+import { ZERO_ADDRESS } from "@/lib/proven";
 
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 
@@ -20,8 +22,19 @@ export default function RewardsPage() {
   const { profile, hydrated } = useProfile();
   const { address } = useAccount();
   const { state, reports, loading, refresh } = useVault();
-  const { fundReward, openTask, releaseReward, claimTask, refundTask, disputeReward, isPending } =
-    useEscrow();
+  const {
+    fundReward,
+    openTask,
+    releaseReward,
+    claimTask,
+    refundTask,
+    cancelTask,
+    disputeReward,
+    resolveDispute,
+    commitEvidence,
+    settleAfterChallenge,
+    isPending,
+  } = useEscrow();
   const now = useNow();
   const uc = useCaseById(profile?.useCase);
   const noun = uc.nouns.deal;
@@ -29,7 +42,7 @@ export default function RewardsPage() {
   const [researcher, setResearcher] = useState("");
   const [amount, setAmount] = useState("");
   const [mode, setMode] = useState<"named" | "open">("named");
-  const [deadlineDays, setDeadlineDays] = useState("7");
+  const [deadlineDays, setDeadlineDays] = useState("");
   const [criteria, setCriteria] = useState("");
   const [funding, setFunding] = useState(false);
   const [notice, setNotice] = useState<{ tone: "success" | "error" | "info"; text: string; href?: string } | null>(null);
@@ -48,9 +61,25 @@ export default function RewardsPage() {
     if (!address) return [];
     const me = address.toLowerCase();
     return state.deals.filter((d) =>
-      (isCompany ? d.payer : d.payee).toLowerCase() === me,
+      isCompany ? d.payer.toLowerCase() === me : d.payee.toLowerCase() === me,
     );
   }, [state.deals, address, isCompany]);
+
+  /** Unclaimed open tasks are invisible in `mine` because payee is still 0x0. */
+  const openBoard = useMemo(
+    () =>
+      state.deals.filter(
+        (d) => d.agentMode && d.status === 1 && d.claimedAt === 0 && d.payee.toLowerCase() === ZERO_ADDRESS,
+      ),
+    [state.deals],
+  );
+
+  const isArbitrator = Boolean(address && address.toLowerCase() === ARBITRATOR_ADDRESS.toLowerCase());
+  const evidenceGate = Boolean(state.features?.evidenceGate);
+
+  function hasPayee(payee: string) {
+    return payee.toLowerCase() !== ZERO_ADDRESS;
+  }
 
   const reportFor = (dealId: string) => reports.find((r) => r.dealId === dealId);
 
@@ -70,10 +99,13 @@ export default function RewardsPage() {
 
     setFunding(true);
     try {
-      const deadline = Math.floor(Date.now() / 1000) + Math.round(Number(deadlineDays) * 86400);
+      const deadline =
+        Number(deadlineDays) > 0
+          ? Math.floor(Date.now() / 1000) + Math.round(Number(deadlineDays) * 86400)
+          : 0;
       const { hash, dealId } =
         mode === "named"
-          ? await fundReward(researcher as `0x${string}`, amount, { criteriaHash })
+          ? await fundReward(researcher as `0x${string}`, amount, { criteriaHash, deadline })
           : await openTask(amount, deadline, criteriaHash);
 
       setNotice({
@@ -154,6 +186,79 @@ export default function RewardsPage() {
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Dispute failed." });
+    } finally {
+      setReleasing(null);
+    }
+  }
+
+  async function onCancel(dealId: string) {
+    setNotice(null);
+    setReleasing(dealId);
+    try {
+      const { hash } = await cancelTask(dealId);
+      setNotice({ tone: "success", text: `Task #${dealId} cancelled. Escrow returned to the payer.`, href: hash });
+      await refresh();
+    } catch (e: unknown) {
+      setNotice({ tone: "error", text: e instanceof Error ? e.message : "Cancel failed." });
+    } finally {
+      setReleasing(null);
+    }
+  }
+
+  async function onResolve(dealId: string, toPayee: boolean) {
+    setNotice(null);
+    setReleasing(dealId);
+    try {
+      const { hash } = await resolveDispute(dealId, toPayee);
+      setNotice({
+        tone: "success",
+        text: `Dispute on #${dealId} resolved ${toPayee ? "to the payee" : "to the payer"}.`,
+        href: hash,
+      });
+      await refresh();
+    } catch (e: unknown) {
+      setNotice({ tone: "error", text: e instanceof Error ? e.message : "Resolve failed." });
+    } finally {
+      setReleasing(null);
+    }
+  }
+
+  async function onCommit(dealId: string) {
+    const r = reportFor(dealId);
+    if (!r?.encryptedPayloadHash || !r.expiresAt) {
+      setNotice({ tone: "error", text: "Anchor a finding before committing it on chain." });
+      return;
+    }
+    setNotice(null);
+    setReleasing(dealId);
+    try {
+      const { hash } = await commitEvidence(
+        dealId,
+        r.encryptedPayloadHash as `0x${string}`,
+        Number(r.expiresAt),
+      );
+      setNotice({
+        tone: "success",
+        text: `Evidence committed on chain for #${dealId}. Release now requires this fingerprint.`,
+        href: hash,
+      });
+      await refresh();
+    } catch (e: unknown) {
+      setNotice({ tone: "error", text: e instanceof Error ? e.message : "Commit failed." });
+    } finally {
+      setReleasing(null);
+    }
+  }
+
+  async function onSettle(dealId: string) {
+    setNotice(null);
+    setReleasing(dealId);
+    try {
+      const { hash } = await settleAfterChallenge(dealId);
+      setNotice({ tone: "success", text: `Settled #${dealId} after the challenge window.`, href: hash });
+      await refresh();
+    } catch (e: unknown) {
+      setNotice({ tone: "error", text: e instanceof Error ? e.message : "Settle failed." });
     } finally {
       setReleasing(null);
     }
@@ -264,7 +369,10 @@ export default function RewardsPage() {
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setMode(m)}
+                  onClick={() => {
+                    setMode(m);
+                    if (m === "open" && !deadlineDays) setDeadlineDays("7");
+                  }}
                   className={`flex-1 rounded-[2px] px-2 py-1.5 text-[11.5px] transition-colors ${
                     mode === m
                       ? "bg-[#ece7dd] text-[#0b0b0c]"
@@ -290,23 +398,24 @@ export default function RewardsPage() {
                 />
               </div>
               )}
-              {mode === "open" && (
-                <div>
-                  <label className="label" htmlFor="deadline">Claim deadline (days)</label>
-                  <input
-                    id="deadline"
-                    className="field tabular-nums"
-                    inputMode="numeric"
-                    placeholder="7"
-                    value={deadlineDays}
-                    onChange={(e) => setDeadlineDays(e.target.value.replace(/[^0-9]/g, ""))}
-                  />
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-600">
-                    After this, anyone can refund the escrow to the payer. A task with no deadline
-                    could be held open forever, so the vault refuses one.
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="label" htmlFor="deadline">
+                  {mode === "open" ? "Claim deadline (days)" : "Deadline (days, optional)"}
+                </label>
+                <input
+                  id="deadline"
+                  className="field tabular-nums"
+                  inputMode="numeric"
+                  placeholder={mode === "open" ? "7" : "0"}
+                  value={deadlineDays}
+                  onChange={(e) => setDeadlineDays(e.target.value.replace(/[^0-9]/g, ""))}
+                />
+                <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-600">
+                  {mode === "open"
+                    ? "After this, anyone can refund the escrow to the payer. A task with no deadline could be held open forever, so the vault refuses one."
+                    : "If set, anyone can refund the escrow after this window. Leave 0 for no expiry."}
+                </p>
+              </div>
               <div>
                 <label className="label capitalize" htmlFor="amount">{noun} amount</label>
                 <div className="relative">
@@ -394,8 +503,14 @@ export default function RewardsPage() {
                       const r = reportFor(d.id);
                       return (
                         <tr key={d.id}>
-                          <td className="font-mono text-zinc-400">#{d.id}</td>
-                          <td className="font-mono text-[12px] text-zinc-400">{shortAddress(d.payee)}</td>
+                          <td className="font-mono text-zinc-400">
+                            <Link href={`/evidence?dealId=${d.id}`} className="hover:text-zinc-200">
+                              #{d.id}
+                            </Link>
+                          </td>
+                          <td className="font-mono text-[12px] text-zinc-400">
+                            {hasPayee(d.payee) ? shortAddress(d.payee) : "unclaimed"}
+                          </td>
                           <td className="tabular-nums text-zinc-200">{money(d.amount, decimals)}</td>
                           <td className="text-[12px] text-zinc-400">
                             {r ? (
@@ -411,16 +526,17 @@ export default function RewardsPage() {
                           </td>
                           <td><StatusPill status={d.status} /></td>
                           <td className="text-right">
-                            {d.status === 1 && d.agentMode && d.claimedAt === 0 && (
+                            <div className="flex flex-wrap justify-end gap-1.5">
+                            {d.status === 1 && d.claimedAt === 0 && (
                               <button
-                                onClick={() => onClaim(d.id)}
+                                onClick={() => onCancel(d.id)}
                                 disabled={releasing === d.id || isPending}
-                                className="btn btn-mint h-8 px-3 text-[12px]"
+                                className="btn h-8 px-3 text-[12px] text-zinc-300"
                               >
-                                {releasing === d.id ? "Claiming…" : "Claim"}
+                                {releasing === d.id ? "Cancelling…" : "Cancel"}
                               </button>
                             )}
-                            {d.status === 1 && d.deadline > 0 && d.deadline * 1000 < now && (
+                            {d.status === 1 && d.deadline > 0 && now > 0 && d.deadline * 1000 < now && (
                               <button
                                 onClick={() => onRefund(d.id)}
                                 disabled={releasing === d.id || isPending}
@@ -429,20 +545,71 @@ export default function RewardsPage() {
                                 {releasing === d.id ? "Refunding…" : "Refund expired"}
                               </button>
                             )}
-                            {d.status === 1 && !d.agentMode && (
+                            {d.status === 1 && hasPayee(d.payee) && evidenceGate && r && !(d.evidence?.hash && d.evidence.hash !== `0x${"00".repeat(32)}`) && (
+                              <button
+                                onClick={() => onCommit(d.id)}
+                                disabled={releasing === d.id || isPending}
+                                className="btn h-8 px-3 text-[12px] text-zinc-200"
+                              >
+                                {releasing === d.id ? "Committing…" : "Commit evidence"}
+                              </button>
+                            )}
+                            {d.status === 1 && hasPayee(d.payee) && (
                               <button
                                 onClick={() => onRelease(d.id)}
                                 disabled={!r || releasing === d.id || isPending}
                                 title={
                                   r
-                                    ? "Release the escrowed reward to the researcher"
-                                    : "The researcher must anchor a finding before payment can be released"
+                                    ? "Release the escrowed reward to the stored payee"
+                                    : "The payee must anchor a finding before payment can be released"
                                 }
                                 className="btn btn-mint h-8 px-3 text-[12px] disabled:cursor-not-allowed"
                               >
                                 {releasing === d.id ? "Paying…" : r ? "Release payment" : "Anchor required"}
                               </button>
                             )}
+                            {d.status === 1 && hasPayee(d.payee) && (
+                              <button
+                                onClick={() => onDispute(d.id)}
+                                disabled={releasing === d.id || isPending}
+                                className="btn btn-ghost h-8 px-3 text-[12px]"
+                              >
+                                {releasing === d.id ? "Freezing…" : "Dispute"}
+                              </button>
+                            )}
+                            {evidenceGate &&
+                              d.status === 1 &&
+                              d.evidence &&
+                              d.evidence.challengeUntil > 0 &&
+                              now > 0 &&
+                              now / 1000 >= d.evidence.challengeUntil && (
+                                <button
+                                  onClick={() => onSettle(d.id)}
+                                  disabled={releasing === d.id || isPending}
+                                  className="btn btn-mint h-8 px-3 text-[12px]"
+                                >
+                                  {releasing === d.id ? "Settling…" : "Settle after challenge"}
+                                </button>
+                              )}
+                            {d.status === 2 && isArbitrator && (
+                              <>
+                                <button
+                                  onClick={() => onResolve(d.id, true)}
+                                  disabled={releasing === d.id || isPending}
+                                  className="btn btn-mint h-8 px-3 text-[12px]"
+                                >
+                                  Pay payee
+                                </button>
+                                <button
+                                  onClick={() => onResolve(d.id, false)}
+                                  disabled={releasing === d.id || isPending}
+                                  className="btn h-8 px-3 text-[12px] text-zinc-300"
+                                >
+                                  Refund payer
+                                </button>
+                              </>
+                            )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -468,12 +635,55 @@ export default function RewardsPage() {
         <div>
           <div className="card mb-4 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[12.5px] leading-relaxed text-zinc-400">
-              Rewards are reserved for a specific wallet. If a company named your address, it shows
-              up below.
+              Named rewards reserved for this wallet show below. Open tasks anyone can claim are on
+              the board above them.
             </p>
-            <Link href="/app/payouts" className="btn btn-ghost h-8 shrink-0 text-[12px]">
-              How payouts work
-            </Link>
+            <div className="flex gap-2">
+              <Link href="/evidence" className="btn btn-ghost h-8 shrink-0 text-[12px]">
+                Public evidence
+              </Link>
+              <Link href="/app/payouts" className="btn btn-ghost h-8 shrink-0 text-[12px]">
+                How payouts work
+              </Link>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-[13px] uppercase tracking-[0.1em] text-zinc-500">Open tasks</h2>
+              <span className="text-[12px] text-zinc-600">{openBoard.length} unclaimed</span>
+            </div>
+            {loading ? (
+              <SkeletonRows rows={2} />
+            ) : openBoard.length === 0 ? (
+              <Empty
+                title="No open tasks"
+                body="When a payer opens work to any agent, it appears here until someone claims it."
+              />
+            ) : (
+              <div className="space-y-2">
+                {openBoard.map((d) => (
+                  <div key={d.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-[15px] font-medium text-white">{money(d.amount, decimals)}</div>
+                      <div className="text-[11.5px] text-zinc-500">
+                        #{d.id} from {shortAddress(d.payer)}
+                        {d.deadline > 0 && now
+                          ? ` · ${timeLeft(String(d.deadline), now)}`
+                          : ""}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onClaim(d.id)}
+                      disabled={releasing === d.id || isPending}
+                      className="btn btn-mint h-8 px-3 text-[12px]"
+                    >
+                      {releasing === d.id ? "Claiming…" : "Claim"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {loading ? (
@@ -483,7 +693,7 @@ export default function RewardsPage() {
               title="No rewards assigned to you"
               body={
                 address
-                  ? "Ask the company to use this wallet address when they fund a reward. You can copy it from Settings."
+                  ? "Claim an open task above, or ask a payer to name this wallet."
                   : "Connect the wallet a company will pay, and your rewards appear here."
               }
               action={<Link href="/app/settings" className="btn btn-ghost">Wallet settings</Link>}
@@ -534,6 +744,24 @@ export default function RewardsPage() {
                           >
                             {releasing === d.id ? "Freezing…" : "Dispute"}
                           </button>
+                        )}
+                        {d.status === 2 && isArbitrator && (
+                          <>
+                            <button
+                              className="btn btn-mint h-8 px-3 text-[12px]"
+                              onClick={() => onResolve(d.id, true)}
+                              disabled={releasing === d.id || isPending}
+                            >
+                              Pay payee
+                            </button>
+                            <button
+                              className="btn h-8 px-3 text-[12px] text-zinc-300"
+                              onClick={() => onResolve(d.id, false)}
+                              disabled={releasing === d.id || isPending}
+                            >
+                              Refund payer
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { BOUNTY_VAULT_V2_ABI, ERC20_ABI } from "@/lib/abi";
 import { ARC_CHAIN_ID, USDC_ADDRESS, VAULT_ADDRESS } from "@/lib/constants";
-import { arcClient, readToken } from "@/lib/arc";
+import { arcClient, readEvidence, readToken, readVaultFeatures } from "@/lib/arc";
 import { arkivWriterStatus } from "@/lib/arkiv";
 import { STATUS_COPY } from "@/lib/format";
 
@@ -13,7 +13,7 @@ const MAX_DEALS = 30;
 
 export async function GET() {
   try {
-    const [nextDealId, balance, token] = await Promise.all([
+    const [nextDealId, balance, token, features] = await Promise.all([
       arcClient.readContract({
         address: VAULT_ADDRESS,
         abi: BOUNTY_VAULT_V2_ABI,
@@ -26,6 +26,7 @@ export async function GET() {
         args: [VAULT_ADDRESS],
       }).catch(() => 0n) as Promise<bigint>,
       readToken(),
+      readVaultFeatures(),
     ]);
 
     const count = Number(nextDealId);
@@ -35,7 +36,7 @@ export async function GET() {
 
     const deals = await Promise.all(
       ids.map(async (id) => {
-        const [[payer, payee, amount, status], row] = await Promise.all([
+        const [[payer, payee, amount, status], row, evidence] = await Promise.all([
           arcClient.readContract({
             address: VAULT_ADDRESS,
             abi: BOUNTY_VAULT_V2_ABI,
@@ -48,6 +49,7 @@ export async function GET() {
             functionName: "deals",
             args: [id],
           }) as Promise<readonly [`0x${string}`, `0x${string}`, `0x${string}`, bigint, bigint, bigint, number, boolean, boolean, `0x${string}`, `0x${string}`]>,
+          features.evidenceGate ? readEvidence(id) : Promise.resolve(null),
         ]);
 
         return {
@@ -60,6 +62,9 @@ export async function GET() {
           deadline: Number(row[4]),
           claimedAt: Number(row[5]),
           agentMode: row[7],
+          assigned: row[8],
+          criteriaHash: row[10],
+          evidence,
         };
       }),
     );
@@ -92,6 +97,7 @@ export async function GET() {
       counts: { open: totals.open, review: totals.review, paid: totals.paid },
       totals: { open: totals.openAmount.toString(), paid: totals.paidAmount.toString() },
       deals,
+      features,
       arkiv: {
         gate: process.env.REQUIRE_ARKIV_ANCHOR !== "false",
         writer: writer.ok ? "ready" : "not-ready",

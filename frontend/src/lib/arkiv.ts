@@ -30,6 +30,8 @@ export const ReportSchema = defineSchema("bounty_reports", {
   encryptedPayloadHash: str(),
   severity: str(),
   expiresAt: u64(),
+  /** keccak of acceptance criteria; "0x00..00" when the deal has none. */
+  criteriaHash: str(),
 });
 
 export type ReportEntity = {
@@ -43,6 +45,7 @@ export type ReportEntity = {
   encryptedPayloadHash?: string | { value: string };
   severity?: string | { value: string };
   expiresAt?: number | bigint | { value: number | bigint };
+  criteriaHash?: string | { value: string };
 };
 
 /**
@@ -57,6 +60,20 @@ export function anchorExpirySeconds(entity: ReportEntity): number | null {
   if (raw === undefined || raw === null) return null;
   const seconds = Number(raw);
   return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+const ZERO_HASH = `0x${"00".repeat(32)}`;
+
+/**
+ * Legacy Arkiv entities were written before criteriaHash existed. A missing or
+ * zero anchored hash is not a mismatch; a present hash must equal the deal's.
+ */
+export function criteriaMatches(dealHash?: string | null, anchored?: string | null): boolean {
+  const deal = (dealHash ?? ZERO_HASH).toLowerCase();
+  if (!deal || deal === ZERO_HASH) return true;
+  const a = (anchored ?? "").toLowerCase();
+  if (!a || a === ZERO_HASH) return true;
+  return a === deal;
 }
 
 export function unwrap<T>(value: T | { value: T } | undefined): T | undefined {
@@ -169,6 +186,7 @@ export async function listReports(
       encryptedPayloadHash: true,
       severity: true,
       expiresAt: true,
+      criteriaHash: true,
     },
     limit: 100,
   });
@@ -197,6 +215,7 @@ export async function createReport(input: {
   amount: bigint;
   encryptedPayloadHash: string;
   severity: string;
+  criteriaHash?: string;
 }) {
   const client = getArkivWriter();
   const expiresAt = BigInt(Math.floor(Date.now() / 1000) + REPORT_RETENTION_DAYS * 86_400);
@@ -213,6 +232,7 @@ export async function createReport(input: {
       encryptedPayloadHash: str(input.encryptedPayloadHash),
       severity: str(input.severity),
       expiresAt: u64(expiresAt),
+      criteriaHash: str(input.criteriaHash ?? `0x${"00".repeat(32)}`),
     },
     { expiration: ExpirationTime.fromDays(REPORT_RETENTION_DAYS) },
   );

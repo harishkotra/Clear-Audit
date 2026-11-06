@@ -9,7 +9,7 @@ public issue. We acknowledge within 72 hours and will pay a reward through Clear
 
 | Asset | Threat | Mitigation |
 | --- | --- | --- |
-| Escrowed USDC | Redirected payout | The researcher address is fixed in `createBounty`; `releaseBounty` pays only the recorded address |
+| Escrowed USDC | Redirected payout | The payee is fixed in `createBounty` or `claimTask`; `release(id)` pays only the recorded address |
 | Escrowed USDC | Double payment | Status transitions are enforced on-chain; released deals cannot be released or disputed again |
 | Escrowed USDC | Admin drain | No owner, no upgrade path, no `withdraw`. Only the protocol (refund) or the arbitrator (resolve) can move funds |
 | Dispute funds | Arbitrator collusion | The arbitrator is immutable and set at deploy time. It can only resolve to one of the two parties named in the deal |

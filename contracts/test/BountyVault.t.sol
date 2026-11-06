@@ -13,34 +13,40 @@ contract BountyVaultTest is BountyVaultTestBase {
         assertEq(vault.paymaster(), paymaster);
         assertEq(vault.arbitrator(), arbitrator);
         assertEq(vault.nextDealId(), 0);
+        assertEq(vault.challengeWindow(), WINDOW);
     }
 
     function test_Constructor_RevertsOnZeroToken() public {
         vm.expectRevert(BountyVault.ZeroAddress.selector);
-        new BountyVault(address(0), paymaster, arbitrator);
+        new BountyVault(address(0), paymaster, arbitrator, WINDOW);
     }
 
     function test_Constructor_AllowsZeroPaymaster() public {
         // A deployment with no sponsorship is valid: the release path takes no fee,
         // so there is nothing for a paymaster to sponsor or skim.
-        BountyVault v = new BountyVault(address(usdc), address(0), arbitrator);
+        BountyVault v = new BountyVault(address(usdc), address(0), arbitrator, WINDOW);
         assertEq(v.paymaster(), address(0));
     }
 
     function test_Constructor_RevertsOnZeroArbitrator() public {
         vm.expectRevert(BountyVault.ZeroAddress.selector);
-        new BountyVault(address(usdc), paymaster, address(0));
+        new BountyVault(address(usdc), paymaster, address(0), WINDOW);
+    }
+
+    function test_Constructor_RevertsOnZeroWindow() public {
+        vm.expectRevert(BountyVault.ZeroWindow.selector);
+        new BountyVault(address(usdc), paymaster, arbitrator, 0);
     }
 
     function test_Constructor_RevertsOnNoCodeToken() public {
         vm.expectRevert(BountyVault.TokenNotContract.selector);
-        new BountyVault(makeAddr("eoaToken"), paymaster, arbitrator);
+        new BountyVault(makeAddr("eoaToken"), paymaster, arbitrator, WINDOW);
     }
 
     function test_Constructor_ZeroCheckPrecedesCodeCheck() public {
         // address(0) has no code too, but ZeroAddress is the reported error
         vm.expectRevert(BountyVault.ZeroAddress.selector);
-        new BountyVault(address(0), address(0), address(0));
+        new BountyVault(address(0), address(0), address(0), WINDOW);
     }
 
     // ───────── createBounty ─────────
@@ -184,9 +190,11 @@ contract BountyVaultTest is BountyVaultTestBase {
 
     function test_Release_PaysPayeeInFullAndEmits() public {
         uint256 id = _bounty();
+        _commit(id);
         vm.expectEmit(true, true, false, true, address(vault));
         emit BountyVault.BountyReleased(id, payee, uint128(AMT));
-        _release(id);
+        vm.prank(payer);
+        vault.release(id);
         assertEq(usdc.balanceOf(payee), AMT);
         assertEq(_vaultBal(), 0);
         assertEq(uint8(_status(id)), uint8(BountyVault.Status.Released));

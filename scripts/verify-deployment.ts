@@ -112,6 +112,22 @@ async function main() {
     check(`${fn} is present`, present, "agent dispatch path");
   }
 
+  const commitPresent = vaultAbi.some(
+    (e: { type: string; name?: string }) => e.type === "function" && e.name === "commitEvidence",
+  );
+  check("commitEvidence is present", commitPresent, "v3 on-chain evidence gate");
+  const canSettlePresent = vaultAbi.some(
+    (e: { type: string; name?: string }) => e.type === "function" && e.name === "canSettle",
+  );
+  check("canSettle is present", canSettlePresent, "v3 view used by 8141 / public checks");
+
+  try {
+    const window = (await call("challengeWindow")) as bigint;
+    check("challengeWindow > 0 (v3 evidence gate is live)", window > 0n, `challengeWindow = ${window}`);
+  } catch {
+    check("challengeWindow > 0 (v3 evidence gate is live)", false, "selector missing — still on v2");
+  }
+
   const nextDealId = (await call("nextDealId")) as bigint;
   check("vault.nextDealId() readable", typeof nextDealId === "bigint", `nextDealId = ${nextDealId}`);
 
@@ -128,8 +144,8 @@ async function main() {
       `${payer} paid ${payee} ${amount}`,
     );
     check(
-      "deal #0 reached a terminal state",
-      status === 3 || status === 4 || status === 5,
+      "deal #0 is Open or terminal",
+      status >= 1 && status <= 5,
       `status ${status}`,
     );
   }

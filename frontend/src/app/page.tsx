@@ -48,15 +48,15 @@ const LIMITS = [
   },
   {
     title: "No 4337 sponsorship on Arc",
-    body: "USDCPaymaster is deployed and wired, but no product flow routes a UserOperation through it. Sponsorship exists on the EF devnet artifact only.",
+    body: "The live v2 vault sets paymaster to zero: there is no fee to sponsor. v1's USDCPaymaster is still on chain and unused. Sponsorship exists on the EF devnet artifact only.",
   },
   {
-    title: "Arbitration is not self-serve",
-    body: "The arbitrator is the deploy wallet and its key is not in this repository. A production deployment names its own.",
+    title: "On-chain evidence, plus a public re-run",
+    body: "v3 release() reverts without a live committed fingerprint. /api/release-guard and /evidence re-check the matching Arkiv anchor. A direct call with no commitEvidence fails on chain.",
   },
   {
-    title: "Open claiming is not on chain yet",
-    body: "The vault has one fixed payee, no deadline and no cancel. Agent dispatch needs a v2 deploy, so it is described here and marked in the app, not sold.",
+    title: "One payee per escrow",
+    body: "Open claiming, deadlines, cancel and refund are live. Multi-claimant contests are not: one deal still pays exactly one address.",
   },
 ];
 
@@ -87,7 +87,7 @@ const FAQ = [
   },
   {
     q: "What does it cost?",
-    a: "Nothing on the deployed vault. The full amount reaches the payee, and a dispute sends it to exactly one party. A fee is a v2 plan, not a switch that exists on chain today.",
+    a: "Nothing on the deployed vault. The full amount reaches the payee, and a dispute sends it to exactly one party. There is no fee switch.",
   },
 ];
 
@@ -105,7 +105,8 @@ anchor.payee  == deal.payee
 anchor.funder == deal.funder
 anchor.amount == deal.amount
 anchor.chain  == 5042002
-expiry        >  now`}
+expiry        >  now
+criteria      matches when set`}
       </pre>
       <div className="border-t border-[var(--rule)] px-3.5 py-2.5 text-[11.5px] leading-relaxed text-[#8d887f]">
         Any failed line is a refusal. No anchor, no payout: the evidence layer is load
@@ -127,6 +128,7 @@ export default function Landing() {
                 ["#rule", "The rule"],
                 ["#situations", "Situations"],
                 ["#dispatch", "Agents"],
+                ["/evidence", "Evidence"],
                 ["#limits", "Limits"],
                 ["#faq", "Questions"],
               ].map(([href, label]) => (
@@ -174,6 +176,9 @@ export default function Landing() {
               <a href="#rule" className="btn btn-ghost h-10 px-4">
                 Read the gate
               </a>
+              <Link href="/evidence" className="btn btn-ghost h-10 px-4">
+                Re-run evidence
+              </Link>
             </div>
             <dl className="mt-10 grid max-w-md grid-cols-3 gap-4 border-t border-[var(--rule)] pt-4">
               {[
@@ -279,7 +284,7 @@ export default function Landing() {
                     </td>
                     <td className="whitespace-nowrap py-4 font-mono text-[10px] uppercase tracking-[0.1em]">
                       <span className={u.fit === "today" ? "text-[#8bd17c]" : "text-[#c9a06a]"}>
-                        {u.fit === "today" ? "live" : "v2"}
+                        {u.fit === "today" ? "live" : "later"}
                       </span>
                     </td>
                   </tr>
@@ -288,8 +293,7 @@ export default function Landing() {
             </table>
           </div>
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#4d4943]">
-            live = works with the deployed vault &nbsp;·&nbsp; v2 = needs deadline, refund or open
-            claiming
+            live = works with the deployed vault &nbsp;·&nbsp; later = needs a contract change
           </p>
         </div>
       </section>
@@ -328,9 +332,9 @@ export default function Landing() {
               ))}
             </ol>
             <div className="mt-4 flex items-center gap-3 border border-[var(--rule)] px-4 py-3">
-              <span className="chip border-[#c9a06a]/40 text-[#c9a06a]">status: not on chain yet</span>
+              <span className="chip text-[#8bd17c]">live on v2</span>
               <span className="text-[12px] leading-[1.6] text-[#8d887f]">
-                Open claiming needs a v2 vault. The deploy prompt is in the repository.
+                Open claiming, deadlines, cancel and refund are on the live vault. Claim from Rewards.
               </span>
             </div>
           </div>

@@ -141,7 +141,11 @@ export default function PaymentsPage() {
                         d.payee.toLowerCase() === address.toLowerCase());
                     return (
                       <tr key={d.id} className={mineRow ? "bg-white/[0.015]" : ""}>
-                        <td className="font-mono text-zinc-400">#{d.id}</td>
+                        <td className="font-mono text-zinc-400">
+                          <Link href={`/evidence?dealId=${d.id}`} className="hover:text-zinc-200">
+                            #{d.id}
+                          </Link>
+                        </td>
                         <td className="font-mono text-[12px] text-zinc-400">{shortAddress(d.payer)}</td>
                         <td className="font-mono text-[12px] text-zinc-400">{shortAddress(d.payee)}</td>
                         <td className="tabular-nums text-zinc-200">{money(d.amount, state.token.decimals)}</td>

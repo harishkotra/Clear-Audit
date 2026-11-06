@@ -311,6 +311,67 @@ export function useEscrow() {
     [requireWallet, run],
   );
 
+  /** Arbitrator only. Sends the full escrow to the payee or back to the payer. */
+  const resolveDispute = useCallback(
+    async (dealId: string, toPayee: boolean) => {
+      const w = requireWallet("resolve this dispute");
+      return run("resolution", () =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "resolveDispute",
+          args: [BigInt(dealId), toPayee],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [requireWallet, run],
+  );
+
+  /**
+   * v3 only. Live v2 has no commitEvidence selector; the wallet reverts and we
+   * surface that as "this vault does not gate release on chain yet."
+   */
+  const commitEvidence = useCallback(
+    async (dealId: string, hash: `0x${string}`, expiresAt: number) => {
+      if (!hash || hash === NO_CRITERIA) throw new Error("Evidence hash is missing.");
+      if (expiresAt <= Math.floor(Date.now() / 1000)) {
+        throw new Error("The evidence expiry is already in the past.");
+      }
+      const w = requireWallet("commit evidence");
+      return run("evidence commit", () =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "commitEvidence",
+          args: [BigInt(dealId), hash, BigInt(expiresAt)],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [requireWallet, run],
+  );
+
+  /** v3 only. Anyone may pay the stored payee after the challenge window. */
+  const settleAfterChallenge = useCallback(
+    async (dealId: string) => {
+      const w = requireWallet("settle after the challenge window");
+      return run("settlement", () =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "settleAfterChallenge",
+          args: [BigInt(dealId)],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [requireWallet, run],
+  );
+
   return {
     fundReward,
     openTask,
@@ -319,6 +380,9 @@ export function useEscrow() {
     refundTask,
     cancelTask,
     disputeReward,
+    resolveDispute,
+    commitEvidence,
+    settleAfterChallenge,
     isPending,
     error,
     address,

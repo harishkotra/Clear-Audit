@@ -1,25 +1,39 @@
 # Deployment
 
-ClearAudit deploys **only** through Arc Studio. There is no direct `forge broadcast` step in the
-submission flow: the sandbox is the build and deploy environment, and the repository keeps a copy of
-the sources so the deployment is reviewable.
+v1 and v2 went out through Arc Studio. v3 was broadcast with Foundry after the Studio session hit
+its usage cap. Same wallet, same Arc Testnet, sources in this repo.
 
 ```
-Arc Studio workspace ──deploy──► Arc Testnet
+forge script contracts/script/DeployVaultV2.s.sol:DeployVaultV2
+  --rpc-url https://rpc.testnet.arc.io --broadcast
         │
-        └──pull──► contracts/ (this repo)  ──gen-abi──► frontend/src/lib/abi.ts
+        └── deployments.arc.json  ──gen-abi──► frontend/src/lib/abi.ts
 ```
 
 ## What is deployed
 
-### v2, the live settlement target
+### v3, the live settlement target
+
+| Contract | Address |
+| --- | --- |
+| `BountyVault` v3 | `0x2334493e0EeD42b0E45fF8E64862dBDA50A41772` |
+| USDC (ERC-20 view) | `0x3600000000000000000000000000000000000000` |
+| Arbitrator | `0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2` |
+| Paymaster | `0x0000000000000000000000000000000000000000` |
+| Challenge window | 300 seconds |
+
+Deployment transaction:
+`0x31a80755a47ccdeb1fd8a29337e8f14a08ea913c78989f7b6030ee4800723f7c` (block 71035461,
+1776686 gas).
+
+`release(id)` requires a live `commitEvidence` fingerprint. After the challenge window anyone may
+`settleAfterChallenge`.
+
+### v2, superseded
 
 | Contract | Address |
 | --- | --- |
 | `BountyVault` v2 | `0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593` |
-| USDC (ERC-20 view) | `0x3600000000000000000000000000000000000000` |
-| Arbitrator | `0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2` |
-| Paymaster | `0x0000000000000000000000000000000000000000` |
 
 Deployment transaction:
 `0x167899b66fbdaf259770a12e18d6f525c6ec1a01c109c8d1c9de38b03a263e5d` (block 71028686,
@@ -46,8 +60,9 @@ The vault and the paymaster are created **inside the deployer constructor**, so 
 (`vault.paymaster`, `paymaster.vault`) are wired before either address is usable. The deployer then
 asserts the wiring and reverts on mismatch - a partial deployment cannot survive.
 
-Both generations are kept: v1 explains where the paymaster came from, v2 is where money moves. The
-source of v1 is `contracts/legacy/BountyVaultV1.sol`, and the v2 source is `contracts/BountyVault.sol`.
+Three generations are kept: v1 explains the paymaster, v2 shipped open tasks, v3 is where money
+moves and evidence is on chain. Sources: `contracts/legacy/BountyVaultV1.sol`,
+`contracts/legacy/BountyVaultV2.sol`, `contracts/BountyVault.sol`.
 
 ## Proven end to end on Arc
 
@@ -115,18 +130,29 @@ If you do need a new instance:
 
 ## Known deployment caveat: the arbitrator
 
-`BountyVault.arbitrator` is immutable and set at deploy time. The current deployment uses the Arc
-Studio deploy wallet (`0x5B12Ce46C7194aD57d143bC22847224047b1Ef42`), which is shared by every Arc
-Studio project and whose key is not available to this repository.
+`BountyVault.arbitrator` is immutable and set at deploy time. The **live v3** vault uses the project
+wallet `0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2`, which this repository can operate through
+`.env.local`. The superseded v1 vault used the shared Arc Studio wallet `0x5B12…Ef42`.
 
 Consequences, stated plainly:
 
-- A researcher can always `disputeBounty` (freeze the funds).
-- `resolveDispute` can only be called by that wallet, so a frozen bounty needs Arc Studio to act.
-- Nothing else - not the company, not the researcher, not an admin - can move a disputed bounty.
+- Either party can `dispute` (freeze the funds).
+- `resolveDispute` can only be called by the recorded arbitrator.
+- Nothing else — not the payer, not the payee, not an admin — can move a disputed bounty.
 
-The contracts are correct; this is a deployment-configuration choice. A production deployment sets
-`ARBITRATOR` to a dedicated address (multisig or arbitration service) that the project controls.
+## Redeploy v3 with Foundry
+
+Studio quota was exhausted for this event, so v3 went out with:
+
+```bash
+ARBITRATOR=0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2 \
+CHALLENGE_WINDOW=300 \
+forge script contracts/script/DeployVaultV2.s.sol:DeployVaultV2 \
+  --rpc-url https://rpc.testnet.arc.io --broadcast --private-key "$ARKIV_PRIVATE_KEY"
+```
+
+Then set `NEXT_PUBLIC_VAULT_ADDRESS`, update `deployments.arc.json`, run `npm run verify:chain`.
+Do not add a proxy.
 
 ## Foundry tests
 

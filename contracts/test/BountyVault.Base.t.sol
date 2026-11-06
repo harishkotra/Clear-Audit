@@ -20,7 +20,9 @@ abstract contract BountyVaultTestBase is Test {
     uint256 internal constant AMT = 1_000e6;
     uint256 internal constant FUNDS = 1_000_000e6;
     uint64 internal constant DAY = 1 days;
+    uint64 internal constant WINDOW = 1 hours;
     bytes32 internal constant CRIT = keccak256("criteria");
+    bytes32 internal constant EV = keccak256("evidence");
 
     uint64 internal t0;
 
@@ -28,7 +30,7 @@ abstract contract BountyVaultTestBase is Test {
         vm.warp(1_700_000_000);
         t0 = uint64(block.timestamp);
         usdc = new MockUSDC();
-        vault = new BountyVault(address(usdc), paymaster, arbitrator);
+        vault = new BountyVault(address(usdc), paymaster, arbitrator, WINDOW);
         usdc.mint(payer, FUNDS);
         vm.prank(payer);
         usdc.approve(address(vault), type(uint256).max);
@@ -68,7 +70,15 @@ abstract contract BountyVaultTestBase is Test {
         vault.claimTask(id);
     }
 
+    function _commit(uint256 id) internal {
+        if (vault.evidenceHash(id) == bytes32(0)) {
+            vm.prank(payer);
+            vault.commitEvidence(id, EV, uint64(block.timestamp + 30 days));
+        }
+    }
+
     function _release(uint256 id) internal {
+        _commit(id);
         vm.prank(payer);
         vault.release(id);
     }

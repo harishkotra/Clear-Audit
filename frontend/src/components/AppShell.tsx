@@ -158,6 +158,10 @@ function AppShellInner({
           <div className="mt-5">{nav}</div>
 
           <div className="mt-6 border-t border-white/8 pt-4">
+            <Link href="/evidence" className="nav-link text-[13px]">
+              Public evidence
+              <ArrowUpRight className="ml-auto h-3.5 w-3.5 opacity-60" />
+            </Link>
             <a
               href="https://explorer.testnet.arc.io"
               target="_blank"

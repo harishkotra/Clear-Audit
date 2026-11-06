@@ -39,16 +39,16 @@ The pieces that are testnet-bound are the settlement asset and the networks. The
   several networks without cross-network confusion.
 
 The two things that must change before a mainnet launch, stated plainly: the arbitrator is currently
-the Arc Studio deploy wallet, so a production deployment sets `ARBITRATOR` to a project-controlled
-address (see `docs/DEPLOYMENT.md`); and the Arkiv retention window is a product decision that we
-expose as a constant, not a fixed number we would defend forever.
+a project EOA (`0x65B5…0ed2`), so a production deployment sets `ARBITRATOR` to a dedicated
+committee or service (see `docs/DEPLOYMENT.md`); and the Arkiv retention window is a product decision
+that we expose as a constant, not a fixed number we would defend forever.
 
 ## Numbers we can defend today
 
 | Claim | Where it comes from |
 | --- | --- |
-| Deployment matches the source | `npm run verify:chain` - 13 checks, all read from RPC |
-| No fee on the deployed vault | `frontend/src/app/page.tsx` pricing tier and `BountyVault.releaseBounty` (no fee term exists in the contract) |
+| Deployment matches the source | `npm run verify:chain` — read-only RPC checks against `deployments.arc.json` |
+| No fee on the deployed vault | `frontend/src/app/page.tsx` limits and `BountyVault.release(id)` (no fee term exists in the contract) |
 | Arkiv gates payouts | `POST /api/release-guard` refuses with `403`/`409`, and the release button is disabled without an anchor |
 | Sponsored settlement works | three mined alt-mempool transactions listed in `deployments.json`, plus `npm run claim` |
 

@@ -3,10 +3,9 @@ import type { Role } from "./profile";
 /**
  * What people actually settle with this rail.
  *
- * The contract is narrower than this list, and the list says so: `BountyVault`
- * escrows one fixed amount to one fixed address, released by the funder's
- * assertion, with a dispute fork. Anything needing a refund path, a deadline or
- * partial releases is marked `needs-v2` rather than sold as available.
+ * The live v2 vault covers named payees, open claiming, deadlines, cancel and
+ * refund. Multi-claimant contests still need a later contract, and are marked
+ * `later` rather than sold as available.
  *
  * This is the single source of truth for the landing page, onboarding and the
  * workspace copy - so the product cannot drift from the pitch in one place and
@@ -21,7 +20,7 @@ export type UseCaseId =
   | "contest"
   | "bug-bounty";
 
-export type Fit = "today" | "needs-v2";
+export type Fit = "today" | "later";
 
 export type UseCase = {
   id: UseCaseId;
@@ -52,8 +51,7 @@ export const USE_CASES: UseCase[] = [
       "A protocol negotiates the return of exploited funds, then pays a delivery bounty without either side revealing who the other is.",
     evidence: "Attestation that the funds reached the recovery address",
     expiry: "The negotiation window closes; the record of it stops existing",
-    fit: "needs-v2",
-    needs: "Needs `deadline` + a refund path: without them the protocol's capital is locked forever if the funds never arrive.",
+    fit: "today",
     nouns: { deal: "settlement", payer: "protocol", payee: "returning party" },
     amountHint: "10% of the recovered amount, typically",
     sides: {
@@ -101,9 +99,7 @@ export const USE_CASES: UseCase[] = [
       "A lister publishes work with a refund deadline. Any registered agent can claim it, deliver an artefact hash, and be paid. Nobody waits for a human to sign up and disappear.",
     evidence: "Artefact hash written by the agent, plus the agent's capability anchor",
     expiry: "The task record ends with the anchor instead of lingering forever",
-    fit: "needs-v2",
-    needs:
-      "Needs open claiming (claimTask), a deadline and a refund path. Today the payee is fixed when the task is funded, so only pre-named agents work.",
+    fit: "today",
     nouns: { deal: "task", payer: "lister", payee: "agent" },
     amountHint: "Per task",
     sides: {
@@ -119,7 +115,7 @@ export const USE_CASES: UseCase[] = [
       "A contest's judge is the arbitrator: they resolve to one winner, and the submission hash is the evidence both sides can re-check.",
     evidence: "Winning submission fingerprint",
     expiry: "The NDA / embargo window ends with the anchor",
-    fit: "needs-v2",
+    fit: "later",
     needs: "Needs multi-claimant payout: today one escrow pays exactly one fixed address.",
     nouns: { deal: "contest prize", payer: "sponsor", payee: "contestant" },
     amountHint: "Prize pool, per winner",
@@ -152,5 +148,5 @@ export function useCaseById(id: UseCaseId | undefined): UseCase {
 
 export const FIT_LABEL: Record<Fit, string> = {
   today: "works with the deployed vault",
-  "needs-v2": "needs a contract change",
+  later: "needs a contract change",
 };

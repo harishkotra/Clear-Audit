@@ -161,6 +161,10 @@ contract BountyVaultHandler is Test {
         uint256 wBefore = usdc.balanceOf(w);
         uint256 amount;
         (,, amount,) = vault.getDeal(id);
+        if (c == payer && w != address(0) && vault.evidenceHash(id) == bytes32(0)) {
+            vm.prank(payer);
+            try vault.commitEvidence(id, keccak256(abi.encode(id)), uint64(block.timestamp + 30 days)) {} catch {}
+        }
         vm.prank(c);
         try vault.release(id) {
             successes["release"]++;
@@ -237,7 +241,7 @@ contract BountyVaultInvariantTest is Test {
     function setUp() public {
         vm.warp(1_700_000_000);
         usdc = new MockUSDC();
-        vault = new BountyVault(address(usdc), makeAddr("paymaster"), makeAddr("arbitrator"));
+        vault = new BountyVault(address(usdc), makeAddr("paymaster"), makeAddr("arbitrator"), 1 hours);
         handler = new BountyVaultHandler(vault, usdc);
         targetContract(address(handler));
     }

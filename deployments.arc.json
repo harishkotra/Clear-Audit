@@ -12,27 +12,73 @@
   },
   "contracts": {
     "BountyVault": {
-      "address": "0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593",
-      "txHash": "0x167899b66fbdaf259770a12e18d6f525c6ec1a01c109c8d1c9de38b03a263e5d",
-      "block": 71028686,
-      "version": 2,
-      "explorerUrl": "https://explorer.testnet.arc.io/address/0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593",
+      "address": "0x2334493e0EeD42b0E45fF8E64862dBDA50A41772",
+      "txHash": "0x31a80755a47ccdeb1fd8a29337e8f14a08ea913c78989f7b6030ee4800723f7c",
+      "block": 71035461,
+      "version": 3,
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0x2334493e0EeD42b0E45fF8E64862dBDA50A41772",
       "deployer": "0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2",
       "arbitrator": "0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2",
       "paymaster": "0x0000000000000000000000000000000000000000",
-      "note": "Open tasks with a deadline, one-argument release, refund after expiry, no fee path and therefore no paymaster.",
-      "deployGas": 1410742
+      "challengeWindow": 300,
+      "note": "v3: commitEvidence, canSettle, settleAfterChallenge. Open tasks, one-argument release, no fee path. Deployed with forge script (Arc Studio quota exhausted).",
+      "deployGas": 1776686
     }
   },
   "superseded": {
+    "BountyVaultV2": "0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593",
+    "BountyVaultV2tx": "0x167899b66fbdaf259770a12e18d6f525c6ec1a01c109c8d1c9de38b03a263e5d",
     "ClearAuditDeployer": "0x8fcC1436147BF48eCF57C0B4609B5380E7b5756a",
-    "BountyVault": "0x283776AB6c2B139d6097285821AC5EdDe43e115e",
+    "BountyVaultV1": "0x283776AB6c2B139d6097285821AC5EdDe43e115e",
     "USDCPaymaster": "0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B",
-    "note": "v1 pair. Still on chain and still readable, but no longer the settlement target of the app."
+    "note": "v2 and v1 are still on chain and readable. The app points at v3."
   },
+  "seed": [
+    {
+      "dealId": "0",
+      "what": "Named 5 USDC bounty with acceptance criteria and a 7-day deadline",
+      "createTx": "0x2bacbe4dfb881b00327d56cd40a64df0213162edb4be412d18174ccbe74545c8",
+      "block": 71035645,
+      "payee": "0xBEEF00000000000000000000000000000000BEEf",
+      "amount": "5000000",
+      "status": "Open"
+    },
+    {
+      "dealId": "1",
+      "what": "Named 1 USDC bounty with no Arkiv anchor (guard 403)",
+      "createTx": "0xbdb88842c817e4355e0810aa9c99a8f7666b54bdc70a9df8aeac9fd12e69478b",
+      "block": 71035649,
+      "payee": "0xBEEF00000000000000000000000000000000BEEf",
+      "amount": "1000000",
+      "status": "Open"
+    },
+    {
+      "dealId": "2",
+      "what": "Open task 2 USDC, 2-hour deadline, unclaimed",
+      "createTx": "0xb80b8f09e33ed286302dfc1144d9de9e840a908ce54102fce30871756bf58a19",
+      "block": 71035653,
+      "payee": "0x0000000000000000000000000000000000000000",
+      "amount": "2000000",
+      "status": "Open"
+    },
+    {
+      "dealId": "3",
+      "what": "Named 3.5 USDC with Arkiv anchor and on-chain commitEvidence (amount unique vs v2 deal #0)",
+      "createTx": "0x54db3731ead9498e4cca3a86f8375175220f59fb6cf1cf6ef43ef217c781bbb2",
+      "block": 71036063,
+      "payee": "0xBEEF00000000000000000000000000000000BEEf",
+      "amount": "3500000",
+      "status": "Open",
+      "anchorKey": "0x827496e1cd7c13af37b2c830b53409fb9909755e5c3960a69ded4aad3db900b7",
+      "anchorTx": "0x739c8298a3c7a6ee400b06fc4cd1f5f80a046997cad5e5f7da78cf151dbf2f7f",
+      "commitTx": "0x5dfbd6b514a40c7b6d0b9256afa7aa1b463eb94259729fbeb8f4ac94307bf7a6",
+      "canSettle": true
+    }
+  ],
   "proven": [
     {
-      "what": "Arkiv anchor gates a real payout",
+      "what": "v2 historical: Arkiv anchor gated a real payout",
+      "vault": "0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593",
       "dealId": "0",
       "createTx": "0xa5a6b0d2c8b2470bdc5870d2e1b6c361bd1360fe5b80ae90e7613459dc28daf6",
       "anchorKey": "0x6035259ae5b5d71415498a5d4f1b76f3e2391145e67a300a7d3cda53087f57ef",
@@ -41,7 +87,8 @@
       "result": "status Released, 5 USDC moved to the payee in 93123 gas"
     },
     {
-      "what": "The gate refuses when no anchor exists",
+      "what": "v2 historical: the gate refused when no anchor existed",
+      "vault": "0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593",
       "dealId": "1",
       "createTx": "0x3038b24ce6676afec72e07498a47cb80b55b9933339c7cef0423e1fdb32aa00b",
       "guard": "POST /api/release-guard returned 403, no live Arkiv anchor"

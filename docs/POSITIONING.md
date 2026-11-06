@@ -17,9 +17,10 @@ Contract facts that define the shape (see `contracts/BountyVault.sol`):
 - one payee per task, fixed at funding time or at the first `claimTask`, and it cannot be redirected
   (`release` takes no recipient);
 - one amount, no partial releases, no milestones;
-- **a deadline on open tasks**: past it, anyone may `refundExpired` the escrow back to the payer.
-  A claimed task that is not released still waits for the deadline or for the arbitrator;
-- release requires the funder (or the paymaster branch), so the payee can never self-release;
+- **a deadline on open tasks** (and optionally on named bounties): past it, anyone may
+  `refundExpired` the escrow back to the payer. A claimed task that is not released still waits
+  for the deadline or for the arbitrator;
+- release requires the payer, so the payee can never self-release;
 - roles are constrained at creation (`RoleConflict`): funder ≠ payee ≠ arbitrator;
 - no upgrade key, no admin withdrawal, no fee on the deployed deployment.
 
@@ -36,9 +37,9 @@ are also the most crowded instantiation available, which is exactly why they sho
 
 | # | Use case | Why it fits | What it would need |
 | --- | --- | --- | --- |
-| 1 | **Post-exploit recovery settlement** - funds are returned by an exploiter or a whitehat under negotiated terms | counterparty is pseudonymous, the window is hours not weeks, evidence is on-chain and public, and the negotiation state must not persist forever | **`deadline` + `cancelBounty`** - without a refund path a funder's capital is locked forever, which is fatal here |
+| 1 | **Post-exploit recovery settlement** - funds are returned by an exploiter or a whitehat under negotiated terms | counterparty is pseudonymous, the window is hours not weeks, evidence is on-chain and public, and the negotiation state must not persist forever | works on the live vault (`deadline` + `cancel` + `refundExpired`) |
 | 2 | **Critical-infrastructure / CVD disclosure payouts** (PSIRT, national CERTs, VDPs) | the payee can never be KYC'd in the time available; a legal retention window maps exactly onto anchor expiry | works today, no contract change |
-| 3 | **Pseudonymous work payouts** (annotation, research bounties, agent-to-agent task markets) | the payee holds no gas token and no identity; the Arkiv entity doubles as the task and the claim | `deadline` + partial release |
+| 3 | **Pseudonymous work payouts** (annotation, research bounties, agent-to-agent task markets) | the payee holds no gas token and no identity; the Arkiv entity doubles as the task and the claim | works for a single payee; partial release is later |
 | 4 | **NDA audit-contest settlement** | evidence = submission fingerprint, expiry = the NDA window, arbitrator = the neutral judge | multi-claimant payout |
 | 5 | **Parametric / attestation-gated claims** | "evidence exists, is current, and matches the claim" is literally the guard's predicate | amount tiers |
 | 6 | **Bug bounties** | fits, works today, most crowded | - |
@@ -85,13 +86,14 @@ point in this build:
   never sends a transaction, not because a paymaster paid for one.
 - **The EF devnet as settlement.** It is a research artifact on chain 1337 against a reference vault.
   Arc is the product.
-- **Dispute resolution as self-serve.** The arbitrator is the Arc Studio deploy wallet; its key is not
-  in this repository.
+- **Dispute resolution as self-serve.** The live v2 arbitrator is the project wallet `0x65B5…0ed2`,
+  which this repository can operate. It is still a single EOA, not a committee.
 - **Arkiv as decorative.** It is load-bearing: no live, chain-scoped, matching anchor means no payout
   (`/api/release-guard`, `/api/claim`).
 
 ## The honest gap between the pitch and the contract
 
-If the beachhead is #1 or #3, the contract needs `deadline`, `cancelBounty` and partial release. That
-is a V2, not a hackathon patch - and the current vault is deployed with no upgrade path, so it is a
-fresh deploy. Saying that first is cheaper than having a judge find it.
+v3 is live. `release(id)` reverts without a committed, unexpired evidence hash. The vault still does
+not call Arkiv: the payer (or a later `settleAfterChallenge`) supplies the same fingerprint the
+Arkiv entity holds, and `/api/release-guard` plus `/evidence` re-check the match. A caller who
+skips `commitEvidence` cannot take the money.

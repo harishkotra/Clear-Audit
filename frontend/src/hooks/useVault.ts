@@ -14,6 +14,9 @@ export type VaultDeal = {
   /** Unix seconds when an agent claimed an open task; 0 otherwise. */
   claimedAt: number;
   agentMode: boolean;
+  assigned?: boolean;
+  criteriaHash?: `0x${string}`;
+  evidence?: { hash: `0x${string}`; expiresAt: number; challengeUntil: number } | null;
 };
 
 export type VaultState = {
@@ -25,6 +28,7 @@ export type VaultState = {
   counts: { open: number; review: number; paid: number };
   totals: { open: string; paid: string };
   deals: VaultDeal[];
+  features?: { evidenceGate: boolean; challengeWindow: number };
   arkiv?: {
     gate: boolean;
     writer: "ready" | "not-ready";
@@ -41,6 +45,7 @@ export type Report = {
   amount: string | null;
   encryptedPayloadHash: string | null;
   severity: string | null;
+  criteriaHash?: string | null;
   expiresAt: string;
 };
 

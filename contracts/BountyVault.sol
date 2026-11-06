@@ -5,10 +5,12 @@ import "./interfaces/IERC20.sol";
 
 /**
  * +------------------------------------------------------------------+
- * |              ClearAudit v2 - Zero-Trust Bug Bounty Vault           |
+ * |              ClearAudit v3 - Zero-Trust Bug Bounty Vault           |
  * +------------------------------------------------------------------+
  * | Payers escrow USDC for named payees or claimable agent tasks.      |
- * | Only the payer can release; a payee can never self-release.        |
+ * | Release requires a committed evidence fingerprint that has not     |
+ * | expired. After a challenge window, anyone may settle to the payee. |
+ * | Only the payer can release early; a payee can never self-release.  |
  * | Either party can dispute. The fixed arbitrator decides disputes,  |
  * | and only Open deals can expire into a refund to the payer.        |
  * | Arbitration is trusted: "zero-trust" does not remove that trust.   |
@@ -18,7 +20,7 @@ import "./interfaces/IERC20.sol";
  *
  * State machine (terminal states have no outgoing transitions):
  *
- * None --> Open --> Released                      (payer release)
+ * None --> Open --> Released                      (payer release, or anyone after challenge)
  *            |  \-> ResolvedToPayer               (cancel / expiry)
  *            |
  *            +--> Disputed --> ResolvedToPayee     (arbitrator)
@@ -30,7 +32,8 @@ import "./interfaces/IERC20.sol";
  *            | cancel before deadline if unclaimed| arbitrate
  * Payee      | Claim eligible task; dispute       | Self-release; resolve
  * Arbitrator | Resolve disputed deals             | Be payer or payee
- * Anyone     | Refund expired Open deals          | Refund Disputed deals
+ * Anyone     | Refund expired Open deals;          | Refund Disputed deals
+ *            | settle after the challenge window   |
  * Paymaster  | Sponsor payer's own release gas     | Privileged release
  *
  * Judge notes: assigned means named by the payer; claimedAt != 0 means
@@ -64,6 +67,9 @@ contract BountyVault {
     /// @notice Fixed neutral adjudicator, copied into each deal at creation.
     address public immutable arbitrator;
 
+    /// @notice Seconds after commitEvidence before anyone may settleAfterChallenge.
+    uint64 public immutable challengeWindow;
+
     /// @dev Auto-incrementing deal ID; the first valid ID is zero.
     uint256 public nextDealId;
 
@@ -93,6 +99,13 @@ contract BountyVault {
     /// @notice Historical deposits remain recorded after terminal settlement.
     mapping(uint256 => Deal) public deals;
 
+    /// @notice SHA-256 (or keccak) fingerprint committed for this deal. Zero until commitEvidence.
+    mapping(uint256 => bytes32) public evidenceHash;
+    /// @notice Unix seconds after which the committed fingerprint is no longer valid for payout.
+    mapping(uint256 => uint64) public evidenceExpiresAt;
+    /// @notice Unix seconds after which anyone may settleAfterChallenge. Zero until commit.
+    mapping(uint256 => uint64) public challengeUntil;
+
     // ────────────────────────── Events ─────────────────────────────
 
     // Judge note: docs/AGENT-DISPATCH.md was not available; this is the default event set.
@@ -112,6 +125,8 @@ contract BountyVault {
     event DisputeResolved(uint256 indexed id, bool toPayee, address indexed recipient, uint128 amount);
     event BountyRefunded(uint256 indexed id, address indexed payer, uint128 amount, address caller);
     event BountyCancelled(uint256 indexed id, address indexed payer, uint128 amount);
+    event EvidenceCommitted(uint256 indexed id, bytes32 hash, uint64 expiresAt, uint64 challengeUntil);
+    event SettledAfterChallenge(uint256 indexed id, address indexed payee, uint128 amount, address caller);
 
     // ────────────────────────── Errors ─────────────────────────────
 
@@ -131,6 +146,11 @@ contract BountyVault {
     error OnlyParty();
     error PayeeNotSet();
     error TokenNotContract();
+    error EvidenceMissing();
+    error EvidenceExpired();
+    error AlreadyCommitted();
+    error ChallengePending();
+    error ZeroWindow();
 
     // ────────────────────────── Constructor ────────────────────────
 
@@ -138,7 +158,7 @@ contract BountyVault {
     /// @dev Retains the three-address constructor; no proxy or upgrade path.
     ///      A zero paymaster means "no gas sponsorship on this deployment", which
     ///      is what happens when the release path stops taking a fee.
-    constructor(address _token, address _paymaster, address _arbitrator) {
+    constructor(address _token, address _paymaster, address _arbitrator, uint64 _challengeWindow) {
         if (_token == address(0) || _arbitrator == address(0)) {
             revert ZeroAddress();
         }
@@ -147,9 +167,11 @@ contract BountyVault {
         // token is immutable. On Arc the settlement token must be the ERC-20
         // interface of USDC (0x3600...0000), never a native-asset sentinel.
         if (_token.code.length == 0) revert TokenNotContract();
+        if (_challengeWindow == 0) revert ZeroWindow();
         token = IERC20(_token);
         paymaster = _paymaster;
         arbitrator = _arbitrator;
+        challengeWindow = _challengeWindow;
     }
 
     // ────────────────────────── Creation ───────────────────────────
@@ -267,10 +289,67 @@ contract BountyVault {
         if (msg.sender != deal.payer) revert OnlyPayer();
         if (deal.status != Status.Open) revert BountyNotOpen();
         if (deal.payee == address(0)) revert PayeeNotSet();
+        _requireLiveEvidence(id);
 
         deal.status = Status.Released;
         _pay(deal.payee, deal.amount);
         emit BountyReleased(id, deal.payee, deal.amount);
+    }
+
+    /**
+     * @notice Record the evidence fingerprint that must match the Arkiv anchor.
+     * @dev Payer only, once per deal, while Open with a payee. Starts the
+     *      challenge clock. The hash is whatever the Arkiv entity committed;
+     *      this contract does not call Arkiv.
+     */
+    function commitEvidence(uint256 id, bytes32 hash, uint64 expiresAt) external {
+        Deal storage deal = deals[id];
+        if (msg.sender != deal.payer) revert OnlyPayer();
+        if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.payee == address(0)) revert PayeeNotSet();
+        if (hash == bytes32(0)) revert ZeroAmount();
+        if (expiresAt <= block.timestamp) revert EvidenceExpired();
+        if (evidenceHash[id] != bytes32(0)) revert AlreadyCommitted();
+
+        evidenceHash[id] = hash;
+        evidenceExpiresAt[id] = expiresAt;
+        uint64 until = uint64(block.timestamp) + challengeWindow;
+        challengeUntil[id] = until;
+        emit EvidenceCommitted(id, hash, expiresAt, until);
+    }
+
+    /**
+     * @notice Anyone may pay the stored payee after the challenge window if
+     *         evidence is still live and the deal was not disputed.
+     */
+    function settleAfterChallenge(uint256 id) external {
+        Deal storage deal = deals[id];
+        if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.payee == address(0)) revert PayeeNotSet();
+        _requireLiveEvidence(id);
+        if (block.timestamp < challengeUntil[id]) revert ChallengePending();
+
+        deal.status = Status.Released;
+        _pay(deal.payee, deal.amount);
+        emit SettledAfterChallenge(id, deal.payee, deal.amount, msg.sender);
+        emit BountyReleased(id, deal.payee, deal.amount);
+    }
+
+    /// @notice True when an Open deal has a payee and unexpired committed evidence.
+    function canSettle(uint256 id) public view returns (bool) {
+        Deal storage deal = deals[id];
+        if (deal.status != Status.Open || deal.payee == address(0)) return false;
+        if (evidenceHash[id] == bytes32(0)) return false;
+        if (block.timestamp >= evidenceExpiresAt[id]) return false;
+        return true;
+    }
+
+    function getEvidence(uint256 id)
+        external
+        view
+        returns (bytes32 hash, uint64 expiresAt, uint64 until)
+    {
+        return (evidenceHash[id], evidenceExpiresAt[id], challengeUntil[id]);
     }
 
     /// @notice Either recorded party may freeze an open deal for arbitration.
@@ -357,6 +436,11 @@ contract BountyVault {
         if (!ok || (data.length != 0 && (data.length < 32 || abi.decode(data, (uint256)) != 1))) {
             revert TransferFailed();
         }
+    }
+
+    function _requireLiveEvidence(uint256 id) private view {
+        if (evidenceHash[id] == bytes32(0)) revert EvidenceMissing();
+        if (block.timestamp >= evidenceExpiresAt[id]) revert EvidenceExpired();
     }
 
     /// @dev A failed deposit reverts the allocated ID and the complete deal.

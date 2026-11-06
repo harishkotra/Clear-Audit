@@ -17,10 +17,9 @@ runs inference through an OpenAI-compatible endpoint (`AGENT_API_BASE_URL`, `AGE
 That is a service fee earned as a payee, not a protocol fee, because the vault has no fee switch and
 the release path cannot be redirected. It works on the deployed vault today.
 
-A lister can also leave the payee open so any agent with a matching capability anchor claims the task
-instead of waiting for a human to accept it and vanish. That needs a v2 vault (open claiming, a
-deadline, a refund), which is specified in [`docs/AGENT-DISPATCH.md`](docs/AGENT-DISPATCH.md) and
-labelled `needs v2` in the app rather than sold.
+A lister can also leave the payee open so any agent claims the task instead of waiting for a human
+to accept it and vanish. That path is live on the v2 vault: `createOpenTask`, `claimTask`, a
+mandatory deadline and `refundExpired`. See [`docs/AGENT-DISPATCH.md`](docs/AGENT-DISPATCH.md).
 
 Live on **Arc Testnet** (chain `5042002`), where USDC is the gas token. Built for ETHGlobal Mumbai with
 all three core partners load-bearing rather than decorative: **Arc** (settlement + Arc Studio
@@ -30,14 +29,15 @@ Foundation** Alternative Mempool (EIP-8141 sponsored settlement, proven end to e
 - Marketing site: `frontend/src/app/page.tsx` - mechanism first, then six situations, then what we
   refuse to claim
 - App: `/app` → Overview · `/app/rewards` · `/app/payouts` · `/app/gasless` · `/app/settings`
+- Public evidence (no wallet): `/evidence?dealId=0`
 
 ## Submitting for (ETHGlobal Mumbai)
 
 | Partner | Track we are entering | Project page |
 | --- | --- | --- |
-| Arc | **Best DeFi / Onchain Finance App Built End to End in Arc Studio** | <https://studio.arc.io/app/3505cc60-6a37-442c-8b75-9a4d516007c1> |
+| Arc | **Best Smart Contracts with Advanced Stablecoin Logic** (lead) and **Best DeFi / Onchain Finance App**, both built in Arc Studio | <https://studio.arc.io/app/3505cc60-6a37-442c-8b75-9a4d516007c1> |
 | Arkiv | **New app whose data lives in Arkiv** | App id `3505cc60-6a37-442c-8b75-9a4d516007c1`; track notes in [`arkiv/`](arkiv/) |
-| Ethereum Foundation | **Alt mempool for EIP-8141 frame transactions** (one EF prize only) | `/app/gasless`, `docs/EIP8141.md` |
+| Ethereum Foundation | **Alt mempool for EIP-8141 frame transactions** (lead). **CROPS** is the backup if the booth asks for a public-mempool kill: `/evidence` plus the application gate. One EF prize only. | `/app/gasless`, `/evidence`, `docs/EIP8141.md` |
 
 Every contract in this repository was written, tested and deployed inside the Arc Studio session
 above; `npx arc-studio deployments --session clearaudit` lists the deployment. The Studio project URL
@@ -81,32 +81,28 @@ Company                    ClearAudit                     Researcher
 
 | Contract | Address |
 | --- | --- |
-| `BountyVault` v2 (live) | [`0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593`](https://explorer.testnet.arc.io/address/0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593) |
+| `BountyVault` v3 (live) | [`0x2334493e0EeD42b0E45fF8E64862dBDA50A41772`](https://explorer.testnet.arc.io/address/0x2334493e0EeD42b0E45fF8E64862dBDA50A41772) |
 | USDC (ERC-20 view) | `0x3600000000000000000000000000000000000000` |
 | Arbitrator | `0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2` |
+| Challenge window | 300 seconds |
 
-v2 deployment transaction:
-[`0x167899b66fbdaf259770a12e18d6f525c6ec1a01c109c8d1c9de38b03a263e5d`](https://explorer.testnet.arc.io/tx/0x167899b66fbdaf259770a12e18d6f525c6ec1a01c109c8d1c9de38b03a263e5d)
-(block 71028686, 1410742 gas)
+v3 deployment transaction:
+[`0x31a80755a47ccdeb1fd8a29337e8f14a08ea913c78989f7b6030ee4800723f7c`](https://explorer.testnet.arc.io/tx/0x31a80755a47ccdeb1fd8a29337e8f14a08ea913c78989f7b6030ee4800723f7c)
+(block 71035461, 1776686 gas). `release(id)` now requires `commitEvidence`. Anyone may `settleAfterChallenge` after 5 minutes.
 
-v2 adds what the first contract could not express: an **open task** that any agent can claim, a
-**claim deadline**, a **refund after expiry**, and `release(id)`, which takes **no recipient and no
-amount**. The payee is fixed on chain at funding time, so no caller can redirect the escrow.
-
-The v1 pair (`ClearAuditDeployer` `0x8fcC…756a`, `BountyVault` `0x2837…115e`, `USDCPaymaster`
-`0xEFFD…ba2B`, deploy tx `0x201d71…b145`) is still on chain and still readable. It is superseded,
-not deleted, and its source is kept at `contracts/legacy/BountyVaultV1.sol` so the first deployment
-stays reviewable.
+v2 (`0xf6aD45A5…Ca593`) and v1 (`0x2837…115e` + `USDCPaymaster`) remain on chain and readable. Sources: `contracts/legacy/BountyVaultV2.sol`, `contracts/legacy/BountyVaultV1.sol`.
 
 ## Proven on chain, not asserted
 
 | Step | Evidence |
 | --- | --- |
-| Fund #0 (5 USDC, named payee) | tx `0xa5a6b0d2…8daf6` |
-| Anchor the delivered artefact | Arkiv entity `0x6035259a…7ef`, tx `0x6137b6c0…ce57`, 30-day expiry |
-| Gate accepts it | `POST /api/release-guard` returns `ok: true` with the anchor key |
-| Pay | tx `0x39711950…1347`, block 71029339, 93123 gas, status Released, payee 0 → 5 USDC |
-| Gate refuses without an anchor | deal #1 has no anchor, `/api/release-guard` returns 403 and no payment is made |
+| Deploy v3 vault | tx `0x31a80755…3f7c`, block 71035461, `challengeWindow = 300` |
+| Fund v3 #0 (5 USDC, named, criteria) | tx `0x2bacbe4d…45c8`, status Open |
+| Fund v3 #1 (1 USDC, no anchor) | tx `0xbdb88842…478b` — guard 403 |
+| Fund v3 #2 (open task, 2 USDC, 2h) | tx `0xb80b8f09…8a19`, payee unset |
+| Fund v3 #3 (3.5 USDC) + Arkiv + commitEvidence | create `0x54db3731…bbb2`, commit `0x5dfbd6b5…f7a6`, `canSettle(3)=true` |
+| Direct `release(1)` with no evidence | reverts `EvidenceMissing` |
+| v2 historical payout | vault `0xf6aD45A5…`, deal #0 Released in `0x39711950…1347` |
 
 `npm run verify:chain` re-reads all of this from the chain and exits non-zero on any mismatch (18
 checks). Full record in [`deployments.arc.json`](deployments.arc.json).
@@ -146,6 +142,9 @@ The ones a reviewer will find, stated first:
   tells an agent to look. Discovery is the open problem, not a solved one.
 - **One payee per task.** No partial releases, no milestone tranches, no multi-claimant contests on
   the same escrow.
+- **`release(id)` requires committed evidence on v3.** A payer who skips `commitEvidence` reverts
+  on chain. `/api/release-guard` and `/evidence` still re-check the Arkiv anchor. See
+  [`docs/DEMO.md`](docs/DEMO.md).
 
 ## Run it
 
@@ -162,7 +161,7 @@ Create `frontend/.env.local`:
 ```ini
 # public
 NEXT_PUBLIC_ARC_RPC_URL=https://rpc.testnet.arc.io
-NEXT_PUBLIC_VAULT_ADDRESS=0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593
+NEXT_PUBLIC_VAULT_ADDRESS=0x2334493e0EeD42b0E45fF8E64862dBDA50A41772
 NEXT_PUBLIC_PAYMASTER_ADDRESS=0x0000000000000000000000000000000000000000
 NEXT_PUBLIC_ARBITRATOR_ADDRESS=0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2
 NEXT_PUBLIC_USDC_ADDRESS=0x3600000000000000000000000000000000000000

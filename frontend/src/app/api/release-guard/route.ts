@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { DEAL_STATUS_V2 } from "@/lib/abi";
 import { readDeal } from "@/lib/arc";
-import { anchorExpirySeconds, findReport, unwrap } from "@/lib/arkiv";
+import { anchorExpirySeconds, criteriaMatches, findReport, unwrap } from "@/lib/arkiv";
 import { ARC_CHAIN_ID } from "@/lib/constants";
 
 /**
@@ -83,6 +83,13 @@ export async function POST(req: Request) {
     if (anchoredAmount !== deal.amount.toString()) {
       return NextResponse.json(
         { ok: false, reason: "The anchored amount does not match the escrowed amount." },
+        { status: 403 },
+      );
+    }
+
+    if (!criteriaMatches(deal.criteriaHash, unwrap(report.criteriaHash) as string | undefined)) {
+      return NextResponse.json(
+        { ok: false, reason: "The anchored acceptance criteria do not match the on-chain hash." },
         { status: 403 },
       );
     }

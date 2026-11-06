@@ -26,7 +26,7 @@ Everything else stays off-chain.
 3. **Read.** `GET /api/reports?dealId=N&chainId=5042002` lists live anchors with a countdown in the
    UI. An expired anchor disappears from the list because Rabdi stops serving it, not because we
    filter it out in the browser.
-4. **Gate.** Before the wallet is asked to sign `releaseBounty`, `useEscrow.releaseReward` calls
+4. **Gate.** Before the wallet is asked to sign `release(id)`, `useEscrow.releaseReward` calls
    `POST /api/release-guard`. The route re-reads the deal from Arc and re-reads the anchor from
    Arkiv, then requires:
    - the deal is `Open` with a non-zero researcher,

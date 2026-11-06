@@ -4,8 +4,8 @@ A lister should not have to wait for a human to accept work and then disappear. 
 settles against a delivered artefact; what it lacks is a way to leave the payee unnamed at funding
 time so *any* capable agent can take the task.
 
-This document is the contract change, the invariants, and the migration. The deployed vault cannot do
-it, so the app labels the feature `needs v2` instead of pretending.
+This document is the contract change, the invariants, and the migration. v2 is live; the app
+exposes open claiming rather than hiding it behind a badge.
 
 ## Why this is a real concern
 
@@ -26,7 +26,7 @@ it worth paying for".
 
 v2 is **deployed and live** at `0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593` on Arc Testnet
 (chain 5042002, deploy tx `0x167899b6…a2f5`, block 71028686). The app points at it, the suite is
-green in this repo (**116 tests, 0 failures** with `forge test`), and the open-agent path has been
+green in this repo (`forge test`), and the open-agent path has been
 exercised end to end: fund, anchor, gate, pay. See `deployments.arc.json` for the receipts and
 `docs/DEPLOYMENT.md` for the reproduction steps.
 
@@ -153,8 +153,7 @@ and transaction hash, and confirm nextDealId() == 0 in the sandbox output.
 6. Anchors: an agent's deliverable anchor carries the same `chainId`, `dealId`, `protocolWallet` (the
    payer) and `whitehatWallet` (the claimer), so the existing gate works without a new query shape.
 
-Until that deploy lands, the app shows the feature with a `needs v2` badge and the fund form stays on
-fixed payees.
+The fund form exposes both modes. Unclaimed open tasks are listed for any connected wallet to claim.
 
 ## Operator model: ClearAudit runs the agent
 

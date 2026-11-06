@@ -25,6 +25,8 @@ export type Deal = {
   claimedAt: number;
   /** True when the deal was opened to any agent rather than naming one payee. */
   agentMode: boolean;
+  assigned: boolean;
+  criteriaHash: `0x${string}`;
 };
 
 /** The chain is the only source of truth for who may be paid. */
@@ -53,7 +55,43 @@ export async function readDeal(id: bigint | string): Promise<Deal> {
     deadline: Number(row[4]),
     claimedAt: Number(row[5]),
     agentMode: row[7],
+    assigned: row[8],
+    criteriaHash: row[10],
   };
+}
+
+export async function readVaultFeatures(): Promise<{
+  evidenceGate: boolean;
+  challengeWindow: number;
+}> {
+  try {
+    const window = (await arcClient.readContract({
+      address: VAULT_ADDRESS,
+      abi: BOUNTY_VAULT_V2_ABI,
+      functionName: "challengeWindow",
+    })) as bigint;
+    return { evidenceGate: true, challengeWindow: Number(window) };
+  } catch {
+    return { evidenceGate: false, challengeWindow: 0 };
+  }
+}
+
+export async function readEvidence(id: bigint | string): Promise<{
+  hash: `0x${string}`;
+  expiresAt: number;
+  challengeUntil: number;
+} | null> {
+  try {
+    const [hash, expiresAt, until] = (await arcClient.readContract({
+      address: VAULT_ADDRESS,
+      abi: BOUNTY_VAULT_V2_ABI,
+      functionName: "getEvidence",
+      args: [BigInt(id)],
+    })) as readonly [`0x${string}`, bigint, bigint];
+    return { hash, expiresAt: Number(expiresAt), challengeUntil: Number(until) };
+  } catch {
+    return null;
+  }
 }
 
 export async function readToken() {

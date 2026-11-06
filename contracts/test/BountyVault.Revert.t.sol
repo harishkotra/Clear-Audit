@@ -297,6 +297,13 @@ contract BountyVaultRevertTest is BountyVaultTestBase {
         vault.release(id);
     }
 
+    function test_Release_RevertsWithoutEvidence() public {
+        uint256 id = _bounty();
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.EvidenceMissing.selector);
+        vault.release(id);
+    }
+
     function test_Release_RevertsTwice() public {
         uint256 id = _bounty();
         _release(id);

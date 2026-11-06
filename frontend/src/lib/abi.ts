@@ -410,6 +410,11 @@ export const BOUNTY_VAULT_V2_ABI = [
         "name": "_arbitrator",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "_challengeWindow",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "stateMutability": "nonpayable"
@@ -447,6 +452,25 @@ export const BOUNTY_VAULT_V2_ABI = [
   },
   {
     "type": "function",
+    "name": "canSettle",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "cancel",
     "inputs": [
       {
@@ -460,12 +484,67 @@ export const BOUNTY_VAULT_V2_ABI = [
   },
   {
     "type": "function",
+    "name": "challengeUntil",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "challengeWindow",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "claimTask",
     "inputs": [
       {
         "name": "id",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "commitEvidence",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "hash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "expiresAt",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "outputs": [],
@@ -618,6 +697,44 @@ export const BOUNTY_VAULT_V2_ABI = [
   },
   {
     "type": "function",
+    "name": "evidenceExpiresAt",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "evidenceHash",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getDeal",
     "inputs": [
       {
@@ -646,6 +763,35 @@ export const BOUNTY_VAULT_V2_ABI = [
         "name": "status",
         "type": "uint8",
         "internalType": "enum BountyVault.Status"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getEvidence",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "hash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "expiresAt",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "until",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "stateMutability": "view"
@@ -715,6 +861,19 @@ export const BOUNTY_VAULT_V2_ABI = [
         "name": "toPayee",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "settleAfterChallenge",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -915,6 +1074,37 @@ export const BOUNTY_VAULT_V2_ABI = [
   },
   {
     "type": "event",
+    "name": "EvidenceCommitted",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "hash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "expiresAt",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "challengeUntil",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "PayeeAssigned",
     "inputs": [
       {
@@ -927,6 +1117,37 @@ export const BOUNTY_VAULT_V2_ABI = [
         "name": "payee",
         "type": "address",
         "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SettledAfterChallenge",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "payee",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "caller",
+        "type": "address",
+        "indexed": false,
         "internalType": "address"
       }
     ],
@@ -964,7 +1185,17 @@ export const BOUNTY_VAULT_V2_ABI = [
   },
   {
     "type": "error",
+    "name": "AlreadyCommitted",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "BountyNotOpen",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ChallengePending",
     "inputs": []
   },
   {
@@ -975,6 +1206,16 @@ export const BOUNTY_VAULT_V2_ABI = [
   {
     "type": "error",
     "name": "DeadlineRequired",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EvidenceExpired",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EvidenceMissing",
     "inputs": []
   },
   {
@@ -1035,6 +1276,11 @@ export const BOUNTY_VAULT_V2_ABI = [
   {
     "type": "error",
     "name": "ZeroAmount",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroWindow",
     "inputs": []
   }
 ] as const;

@@ -34,13 +34,15 @@ contract DeployVaultV2 is Script {
         }
 
         vm.startBroadcast();
-        vault = new BountyVault(SETTLEMENT_TOKEN, paymaster, arbitrator);
+        uint64 window = uint64(vm.envOr("CHALLENGE_WINDOW", uint256(5 minutes)));
+        vault = new BountyVault(SETTLEMENT_TOKEN, paymaster, arbitrator, window);
         vm.stopBroadcast();
 
-        console2.log("BountyVault v2", address(vault));
-        console2.log("token", vault.token());
+        console2.log("BountyVault", address(vault));
+        console2.log("token", address(vault.token()));
         console2.log("arbitrator", vault.arbitrator());
         console2.log("paymaster", vault.paymaster());
+        console2.log("challengeWindow", vault.challengeWindow());
         console2.log("nextDealId", vault.nextDealId());
     }
 }

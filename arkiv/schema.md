@@ -19,6 +19,7 @@ One schema, two entity kinds, everything scoped by chain.
 | `encryptedPayloadHash` | `str` | no | `bytes32` hash of the encrypted report; the body is never on Arkiv |
 | `severity` | `str` | no | `critical` \| `high` \| `medium` \| `low` |
 | `expiresAt` | `u64` | **yes** | Unix seconds, mirrored from the entity TTL so a query can filter on it |
+| `criteriaHash` | `str` | no | keccak of the acceptance-criteria text, or `0x00..00` when the deal has none. The release guard refuses if the deal's hash is set and this field does not match. |
 
 **Owner:** the writer wallet. No user signs an Arkiv transaction, so an entity cannot be edited by a
 company or a researcher - only created by the protocol, and only once per deal while it is live
@@ -42,7 +43,7 @@ const page = await client.query(
     `dealId = u64(${dealId})`,
   ].join(" AND "),
   {
-    select: { $key: true, $expiresAt: true, dealId: true, whitehatWallet: true, amount: true },
+    select: { $key: true, $expiresAt: true, dealId: true, whitehatWallet: true, amount: true, criteriaHash: true },
     limit: 100,
   },
 );
@@ -56,6 +57,8 @@ if (Number(anchor.$expiresAt) <= now) reject("Anchor expired");
 if (anchor.whitehatWallet !== deal.researcher) reject("Anchor does not name this researcher");
 if (anchor.protocolWallet !== deal.company) reject("Anchor does not name this company");
 if (BigInt(anchor.amount) !== deal.amount) reject("Anchor amount does not match the bounty");
+if (deal.criteriaHash !== bytes32(0) && anchor.criteriaHash !== deal.criteriaHash)
+  reject("Acceptance criteria do not match");
 ```
 
 ## Why `chainId` is an attribute and not a namespace

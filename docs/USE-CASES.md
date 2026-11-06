@@ -10,25 +10,19 @@ page, onboarding and the workspace copy).
 
 | # | Situation | Evidence anchor | Why expiry matters | Fit today |
 | --- | --- | --- | --- | --- |
-| 1 | **Post-exploit recovery settlement** - funds return against a negotiated delivery bounty | attestation that funds reached the recovery address | the negotiation window closes; the record stops existing | **needs V2** |
+| 1 | **Post-exploit recovery settlement** - funds return against a negotiated delivery bounty | attestation that funds reached the recovery address | the negotiation window closes; the record stops existing | works (deadline + refund) |
 | 2 | **CVD / PSIRT disclosure payouts** - a programme pays a reporter it cannot KYC in time | accepted report fingerprint | the legal retention window, mapped onto the anchor | works |
 | 3 | **Retainer milestones** - a security firm paid per deliverable | artefact hash (report, patch review, threat model) | the engagement's confidentiality window | works |
-| 4 | **Agent dispatch** - a lister leaves the payee open so any agent can claim the task | artefact hash written by the claiming agent | the task record ends with the anchor | **needs V2** |
-| 5 | **Contest judgement** - a named judge resolves a prize | winning submission fingerprint | the NDA / embargo window | **needs V2** |
+| 4 | **Agent dispatch** - a lister leaves the payee open so any agent can claim the task | artefact hash written by the claiming agent | the task record ends with the anchor | works (`createOpenTask` / `claimTask`) |
+| 5 | **Contest judgement** - a named judge resolves a prize | winning submission fingerprint | the NDA / embargo window | **later** — multi-claimant |
 | 6 | **Bug bounty payout** - the familiar case, and the most crowded lane | accepted finding fingerprint | a fixed bug stops being a permanent indexed target | works |
 
-## What "needs V2" means, concretely
+## What still needs a later vault
 
-The deployed vault has **no `deadline`, no `cancelBounty`, no partial release, one fixed payee**.
+The live v3 vault has deadlines, `cancel`, `refundExpired`, open claiming, one-argument `release`,
+and `commitEvidence`.
 
-- Recovery settlement (#1) is the strongest commercial fit and the one that cannot ship on today's
-  contract: if the funds never arrive, the protocol's capital is locked forever. It is marked, not
-  sold.
-- Contests (#5) need multi-claimant payouts. Today one escrow pays exactly one address.
-- Agent dispatch (#4) needs open claiming, a deadline and a refund. The contract change is specified
-  in [`AGENT-DISPATCH.md`](AGENT-DISPATCH.md), including the exact prompt for the deployment sandbox.
-
-Both are a fresh deploy, not an upgrade - the vault has no proxy.
+- Contests (#5) still need multi-claimant payouts. Today one escrow pays exactly one address.
 
 ## Why bounties are not the headline
 
@@ -39,7 +33,8 @@ card of six, last, and labelled as crowded.
 
 ## Where the app exposes this
 
-- `/` - six situations, with the contract gap on the two that have one.
+- `/` - six situations, with the contract gap on contest judgement (multi-claimant).
+- `/evidence` - public re-run of the Arkiv gate for any deal id. No wallet.
 - `/app` onboarding - pick a situation, then a side; the profile stores it in `localStorage`.
 - `/app`, `/app/rewards`, `/app/settings` - nouns and guidance follow the selected situation
   ("milestone", "disclosure payout", "task"), while the contract and the gate stay identical.
