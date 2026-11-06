@@ -60,7 +60,7 @@
         "v3 was deployed with forge script because the Arc Studio session was quota-exhausted.",
         "Arc's native USDC is the gas token (18 decimals) and also exposes an ERC-20 interface at 0x3600…0000 with 6 decimals. The vault escrows the 6-decimal interface.",
         "v2 has no fee path, so paymaster is the zero address on purpose. 4337 sponsorship is not a product flow on Arc.",
-        "ARBITRATOR is the project wallet 0x65B5…0ed2, which this repository can operate. See docs/DEPLOYMENT.md.",
+        "ARBITRATOR is the project wallet 0x65B5…0ed2, which this repository can operate. See README.",
         "contracts/BountyVault.sol is v3 (on-chain evidence). It is not the live address until a Studio deploy. Feature-detect via challengeWindow()."
       ]
     },
@@ -99,7 +99,7 @@
         "Rebuild command and the gas trap that cost us three reverted creations: deployments.devnet.json."
       ],
       "status": "live - deployed through Arc Studio on 2026-11-06 and verified by independent eth_call (see deployments.devnet.json)",
-      "referenceTransactionsNote": "The pre-reset stack (BountyVault 0x8460\u2026b347) is recorded in docs/EIP8141.md; the shared devnet was reset and those hashes no longer resolve.",
+      "referenceTransactionsNote": "The pre-reset stack (BountyVault 0x8460\u2026b347) is historical; the shared devnet was reset and those hashes no longer resolve. EF path notes live in the README.",
       "arbitrator": "0x4E9dE2B8d17CC142A615573be3aC7901CBc1787a",
       "researcher": "0xBEEF00000000000000000000000000000000BEEf"
     }

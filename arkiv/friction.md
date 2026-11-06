@@ -100,7 +100,7 @@ one `defineSchema` already knows about) would turn those into compile errors.
 The faucet and the access key are both web flows (<https://hub.arkiv.network/faucet>,
 <https://hub.arkiv.network/access-keys>) - neither has a CLI or an API, and neither can be scripted in
 CI. For a hackathon that is fine; for a reproducible test environment it is a manual step in the
-middle of an otherwise scripted setup. `docs/DEPLOYMENT.md` and the README both have to tell the
+middle of an otherwise scripted setup. The README has to tell the
 reader "go click this link" before the app works.
 
 ## What was *not* friction

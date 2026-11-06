@@ -79,6 +79,6 @@
       "VERIFY(EXECUTION_AND_PAYMENT)@paymaster + SENDER": "frame 0 (self_verify) targets 0xC04F\u2026, expected tx.sender 0x5544\u2026 or null",
       "two untargeted VERIFY frames + SENDER": "same prefix rejection"
     },
-    "consequence": "SponsorPaymaster is deployed and funded (50 ETH) but no frame routes payment through it; the fee is paid by tx.sender, the protocol relayer. The gasless property holds for the researcher, who never transacts. Written up in docs/EIP8141.md."
+    "consequence": "SponsorPaymaster is deployed and funded (50 ETH) but no frame routes payment through it; the fee is paid by tx.sender, the protocol relayer. The gasless property holds for the researcher, who never transacts. Written up in the README EF section."
   }
 }

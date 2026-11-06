@@ -40,7 +40,7 @@ The pieces that are testnet-bound are the settlement asset and the networks. The
 
 The two things that must change before a mainnet launch, stated plainly: the arbitrator is currently
 a project EOA (`0x65B5…0ed2`), so a production deployment sets `ARBITRATOR` to a dedicated
-committee or service (see `docs/DEPLOYMENT.md`); and the Arkiv retention window is a product decision
+committee or service (see the README deploy notes); and the Arkiv retention window is a product decision
 that we expose as a constant, not a fixed number we would defend forever.
 
 ## Numbers we can defend today

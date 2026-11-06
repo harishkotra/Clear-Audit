@@ -24,4 +24,4 @@ public issue. We acknowledge within 72 hours and will pay a reward through Clear
 - The demo sponsor paymaster on devnet sponsors any caller while funded. It is not used in the
   product path.
 - Report encryption is local (AES-GCM + PBKDF2, 210k iterations). Key exchange between researcher
-  and company is out of band and manual today; see `docs/ROADMAP.md`.
+  and company is out of band and manual today.
