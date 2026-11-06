@@ -55,7 +55,11 @@ export async function loadEvidence(raw: string): Promise<EvidencePayload> {
   const dealId = BigInt(raw);
   const [deal, features] = await Promise.all([readDeal(dealId), readVaultFeatures()]);
   const evidence = features.evidenceGate ? await readEvidence(dealId) : null;
-  const report = await findReport(dealId, ARC_CHAIN_ID);
+  const report = await findReport(dealId, ARC_CHAIN_ID, {
+    amount: deal.amount.toString(),
+    payer: deal.payer,
+    payee: deal.payee === ZERO_ADDRESS ? undefined : deal.payee,
+  });
 
   const reasons: string[] = [];
   let verdict: EvidenceVerdict = "missing";

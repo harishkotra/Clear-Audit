@@ -198,10 +198,21 @@ export async function listReports(
 export async function findReport(
   dealId: bigint,
   chainId?: number,
+  match?: { amount?: string; payer?: string; payee?: string },
 ): Promise<ReportEntity | null> {
   try {
     const entities = await listReports(dealId, chainId);
-    return entities[0] ?? null;
+    const wanted = entities.filter((e) => {
+      if (match?.amount && String(unwrap(e.amount) ?? "") !== match.amount) return false;
+      if (match?.payer && String(unwrap(e.protocolWallet) ?? "").toLowerCase() !== match.payer.toLowerCase()) {
+        return false;
+      }
+      if (match?.payee && String(unwrap(e.whitehatWallet) ?? "").toLowerCase() !== match.payee.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+    return wanted[0] ?? null;
   } catch {
     return null;
   }

@@ -38,7 +38,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, anchor: null, gate: "disabled" });
     }
 
-    const report = await findReport(dealId, ARC_CHAIN_ID);
+    const report = await findReport(dealId, ARC_CHAIN_ID, {
+      amount: deal.amount.toString(),
+      payer: deal.payer,
+      payee: deal.payee,
+    });
     if (!report) {
       return NextResponse.json(
         {
