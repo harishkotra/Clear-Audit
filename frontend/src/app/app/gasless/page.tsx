@@ -8,7 +8,7 @@ import { DEVNET_CHAIN_ID, DEVNET_EXPLORER } from "@/lib/constants";
 
 const REFERENCES = [
   ["0x9d69aae87b60cf040d81cdb9e5f826ebd50185679259f08f16c22fb861986556", "release paid by the protocol relayer, researcher received 1 000 mUSDC"],
-  ["0xefe4847c428f21fb6f8d65ff4572179559c296a017370d7db7b6a275d73dd863", "deal #1 opened, 500 mUSDC escrowed and still open"],
+  ["0x3374f12ebbcc9f88ff8e1ce36ca48a0e9671f4089769b02971b8a01c8b37787a", "deal #2 opened, 250 mUSDC, still open"],
   ["0xddb34fe4677e40f1973a8bc76680b490630455a4377f2f5979803660da6c6431", "BountyVault deployed on the devnet"],
 ] as const;
 

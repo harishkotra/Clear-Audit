@@ -48,13 +48,15 @@
   "note": "The devnet is shared infrastructure and is reset during the event. If eth_getCode returns 0x for the vault, the stack is gone: rebuild with the command above and re-anchor.",
   "deals": {
     "0": "opened and settled: 1 000 mUSDC escrowed at creation, released to the researcher through the EIP-8141 frame transaction below",
-    "1": "open, 500 mUSDC, ready to be settled by anyone opening /app/gasless"
+    "1": "opened and settled on 2026-11-06 (500 mUSDC released by the user's own test)",
+    "2": "open, 250 mUSDC, anchored \u2014 the live demo deal"
   },
   "setupTxs": {
     "mint": "0xcf03ebeb926199694f21a6f352f906bc1056a911302c847ee031f92b7549a350",
     "approve": "0x46f1e2c2ef29186f1a7130d0a07fdeaa18183e2443fc25d1df0862984ae7c275",
     "createBounty(deal 0)": "0xcafe04e41887b135a882843b3a95ac53082d967631c7ad521d06d907203500bb",
-    "createBounty(deal 1)": "0xefe4847c428f21fb6f8d65ff4572179559c296a017370d7db7b6a275d73dd863"
+    "createBounty(deal 1)": "0xefe4847c428f21fb6f8d65ff4572179559c296a017370d7db7b6a275d73dd863",
+    "createBounty(deal 2)": "0x3374f12ebbcc9f88ff8e1ce36ca48a0e9671f4089769b02971b8a01c8b37787a"
   },
   "transactions": {
     "frameRelease(deal 0)": {
