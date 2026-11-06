@@ -249,6 +249,8 @@ def main() -> None:
     foot_l = layer(idle, left_mask)
     foot_r = layer(idle, right_mask)
 
+    # Full standing render, used for the README and for social previews.
+    idle.save(OUT / "pip.png", optimize=True)
     blink.save(OUT / "pip-blink.png", optimize=True)
     body.save(OUT / "pip-body.png", optimize=True)
     foot_l.save(OUT / "pip-foot-l.png", optimize=True)

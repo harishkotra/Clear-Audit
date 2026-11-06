@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/public/mascot/pip.png" alt="Pip, the ClearAudit companion" width="132" />
+</p>
+
 # ClearAudit
 
 Settlement for situations where you cannot safely trust the other side with custody, and you cannot safely leave a permanent paper trail either.
