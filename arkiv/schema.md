@@ -3,7 +3,7 @@
 One schema, two entity kinds, everything scoped by chain.
 
 **Network:** Rabdi testnet, chain id `7794095`
-**Writer:** `0xf6940F454ec7A06E69c72B51f7129FD00e578e40` (server-only key)
+**Writer:** `0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2` (server-only key)
 **SDK:** `@arkiv-network/sdk` 1.0.1
 
 ## `bounty_reports`

@@ -39,3 +39,6 @@ coverage/
 # stray next builds at repo root
 /.next/
 /frontend/frontend/
+/lib/
+/.gitmodules
+/foundry.lock

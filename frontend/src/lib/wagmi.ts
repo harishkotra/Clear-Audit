@@ -26,13 +26,22 @@ export const arcTestnet = defineChain({
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
+/**
+ * Reown's WalletConnect connector fetches its remote project configuration the
+ * moment it is constructed. Next evaluates this module during prerendering,
+ * where that fetch is rejected and the SDK prints "[Reown Config] Failed to
+ * fetch remote project configuration" on every build. Build the connector only
+ * in the browser: nothing on the server can use it anyway.
+ */
+const canWalletConnect = Boolean(projectId) && typeof window !== "undefined";
+
 export const wagmiConfig = createConfig({
   chains: [arcTestnet],
   connectors: [
     browserWallet(),
     // WalletConnect is optional: without a project id the connector throws
     // during init, which is worse than not offering it.
-    ...(projectId ? [walletConnect({ projectId })] : []),
+    ...(canWalletConnect ? [walletConnect({ projectId: projectId as string })] : []),
   ],
   transports: {
     [arcTestnet.id]: http(),

@@ -62,7 +62,9 @@
       "role": "EIP-8141 gasless settlement prototype (research artifact, not a bridge)",
       "contracts": {
         "BountyVault": "0x8460274B30764c09799f275280CEbA1F1dC5B347",
-        "SponsorPaymaster": "0xA03613a311632EEc5a8bE80CeF034d456d4D6F02"
+        "SponsorPaymaster": "0xA03613a311632EEc5a8bE80CeF034d456d4D6F02",
+        "MockUSDC": "0x1649e232ee7114d1692a3511b49656daa5a4c565",
+        "note": "Pre-reset addresses, kept for the record. Redeploy with contracts/script/DeployDevnet.s.sol inside Arc Studio (see docs/EIP8141.md)."
       },
       "referenceTransactions": [
         {
@@ -81,7 +83,9 @@
       "notes": [
         "Deal #0 is already Released. The app never hardcodes a deal id.",
         "SponsorPaymaster is explicitly demo-only (it sponsors any caller while funded)."
-      ]
+      ],
+      "status": "stale \u2014 the shared devnet was reset (head dropped to #1856); the addresses below no longer have code",
+      "referenceTransactionsNote": "Pre-reset reference transactions: the devnet was reset, so these hashes no longer resolve. The flow they demonstrate is reproduced by scripts/claim.ts after a redeploy."
     }
   },
   "arbitratorCaveat": "BountyVault.arbitrator is immutable and currently points at the Arc Studio deploy wallet. A fresh deployment can set ARBITRATOR to a project-controlled address."

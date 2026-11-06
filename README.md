@@ -197,7 +197,7 @@ live, chain-scoped Arkiv entity matches the on-chain deal's researcher, company 
 Arkiv and the vault becomes a pay-anyone faucet, which is why the guard is fail-closed rather than
 defensive-in-depth.
 
-- **Entity writer:** `0xf6940F454ec7A06E69c72B51f7129FD00e578e40` (Rabdi testnet, chain `7794095`).
+- **Entity writer:** `0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2` (Rabdi testnet, chain `7794095`).
   This key is server-only; it never reaches the browser bundle.
 - **Schema:** `bounty_reports`, one entity kind `zero_day_report`, 30-day expiration.
 - **Query you can run:**
