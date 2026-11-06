@@ -1,0 +1,19 @@
+{
+  "network": "EIP-8141 alt-mempool devnet",
+  "chainId": 1337,
+  "rpcUrl": "https://altmempool.forshtat.com/rpc",
+  "relayer": "0x5544596212F91984C986A919C8026DF0576816f9",
+  "arbitrator": "0x4E9dE2B8d17CC142A615573be3aC7901CBc1787a",
+  "researcher": "0xBEEF00000000000000000000000000000000BEEf",
+  "contracts": {
+    "MockUSDC": {"address": "0xe7AD7dc876cD1Bc086aD69939B6d4ffb1Cf0574b", "txHash": "0xd58790181e05965ebc90555f064fd7082ee9c94306bc789790f7d532f4acc530"},
+    "SponsorPaymaster": {"address": "0xC04F147b94D002dCe42953c145906D652999A9A4", "txHash": "0xadc0acef6f9bcda46ae8135c0c049350d697d04c5ebc14f9775bcf07e020e84b"},
+    "BountyVault": {"address": "0x41CDbF113356EC57dDF893b15e8F3D4Fec6a9234", "txHash": "0xddb34fe4677e40f1973a8bc76680b490630455a4377f2f5979803660da6c6431"}
+  },
+  "setupTxs": {
+    "mint": "0xcf03ebeb926199694f21a6f352f906bc1056a911302c847ee031f92b7549a350",
+    "approve": "0x46f1e2c2ef29186f1a7130d0a07fdeaa18183e2443fc25d1df0862984ae7c275",
+    "createBounty(deal 0)": "0xcafe04e41887b135a882843b3a95ac53082d967631c7ad521d06d907203500bb"
+  },
+  "note": "Devnet is shared and reset periodically. Rebuild with: forge script contracts/script/DeployDevnet.s.sol:DeployDevnet --rpc-url https://altmempool.forshtat.com/rpc --broadcast --legacy --skip-simulation --slow --private-key $PROTOCOL_PRIVATE_KEY (the devnet charges far more gas for deployed code than forge's local simulation assumes, so simulation must be skipped)."
+}

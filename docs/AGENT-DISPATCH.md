@@ -22,6 +22,13 @@ So an open task must carry an acceptance-criteria hash and a public claim before
 funder still asserts acceptance. The gate removes "did they deliver something that matches", not "was
 it worth paying for".
 
+## Status
+
+The v2 contract and tests were written in the Arc Studio sandbox, then the daily usage limit cut the
+turn off before deployment. The pulled candidate is in `docs/v2-pending/` and its suite passes locally:
+**124 tests, 0 failures** (`forge test --match-path 'contracts/test/BountyVault*'`). Deployment is the
+only remaining step, and it must go through the sandbox.
+
 ## Contract v2
 
 `contracts/BountyVault.sol` becomes the following. It stays non-upgradeable and fee-free: a new
@@ -56,7 +63,7 @@ struct Deal {
 | `release(uint256 id)` | payer | status Open, `payee != 0`, pays `amount` to `payee` |
 | `dispute(uint256 id)` | payer or payee | status Open, moves to Disputed |
 | `resolveDispute(uint256 id, bool toPayee)` | arbitrator | status Disputed, pays one side in full, no fee |
-| `refundExpired(uint256 id)` | anyone | `deadline != 0`, `block.timestamp > deadline`, not Released/Resolved; pays payer |
+| `refundExpired(uint256 id)` | anyone | status **Open** only, `deadline != 0`, `block.timestamp > deadline`; pays payer |
 | `cancel(uint256 id)` | payer | unclaimed, before deadline; pays payer |
 | `nextDealId()`, `getDeal(uint256)`, `token()`, `arbitrator()`, `paymaster()` | anyone | unchanged views |
 
@@ -74,9 +81,15 @@ struct Deal {
 
 ### Events
 
-`DealCreated(id, payer, payee, amount, deadline, agentMode)`, `TaskClaimed(id, agent)`,
-`PayeeAssigned(id, payee)`, `Released(id, payee, amount)`, `Disputed(id, by)`,
-`Resolved(id, toPayee)`, `Refunded(id, payer, amount)`, `Cancelled(id, payer, amount)`.
+Implemented names: `BountyCreated`, `TaskClaimed(id, payee, claimedAt)`, `PayeeAssigned(id, payee)`,
+`BountyReleased(id, payee, amount)`, `BountyDisputed(id, by)`, `DisputeResolved(id, toPayee, recipient,
+amount)`, `BountyRefunded(id, payer, amount, caller)`, `BountyCancelled(id, payer, amount)`.
+
+Two rules the audit turn tightened, both worth keeping:
+
+- `refundExpired` handles **Open** deals only. A Disputed deal waits for the arbitrator, so expiry
+  can never bypass arbitration. Cancellation requires an unclaimed deal.
+- `release(uint256 id)` takes no arguments at all, so no caller can redirect escrow.
 
 ## Arc Studio prompt
 

@@ -1,0 +1,22 @@
+{
+  "transactions": [
+    {
+      "rpc": "https://altmempool.forshtat.com/rpc"
+    },
+    {
+      "rpc": "https://altmempool.forshtat.com/rpc"
+    },
+    {
+      "rpc": "https://altmempool.forshtat.com/rpc"
+    },
+    {
+      "rpc": "https://altmempool.forshtat.com/rpc"
+    },
+    {
+      "rpc": "https://altmempool.forshtat.com/rpc"
+    },
+    {
+      "rpc": "https://altmempool.forshtat.com/rpc"
+    }
+  ]
+}

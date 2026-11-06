@@ -1,0 +1,51 @@
+{
+  "project": "ClearAudit",
+  "network": "Arc Testnet",
+  "chainId": 5042002,
+  "rpcUrl": "https://rpc.testnet.arc.io",
+  "explorer": "https://explorer.testnet.arc.io",
+  "deployer": "0x5B12Ce46C7194aD57d143bC22847224047b1Ef42",
+  "deployerNote": "Arc Studio platform deploy wallet. It is an ERC-1967 proxy smart account (not an EOA) shared by all Arc Studio users; its keys are not available to the project owner.",
+  "arbitrator": "0x5B12Ce46C7194aD57d143bC22847224047b1Ef42",
+  "admin": "0x5B12Ce46C7194aD57d143bC22847224047b1Ef42",
+  "settlementToken": {
+    "address": "0x3600000000000000000000000000000000000000",
+    "symbol": "USDC",
+    "decimals": 6,
+    "note": "Settlement token is Arc native USDC via the 0x3600...0000 ERC-20 interface (6 decimals). The native gas view of the same balance has 18 decimals."
+  },
+  "entryPoint": {
+    "address": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+    "note": "ERC-4337 EntryPoint with the PackedUserOperation (v0.7) interface, which USDCPaymaster implements."
+  },
+  "contracts": {
+    "ClearAuditDeployer": {
+      "address": "0x8fcc1436147bf48ecf57c0b4609b5380e7b5756a",
+      "txHash": "0x201d71d90b110fb3d321f3b86591ab07096b646986632bf044082e1cca12b145",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0x8fcc1436147bf48ecf57c0b4609b5380e7b5756a",
+      "role": "One-shot relayer. Creates BountyVault and USDCPaymaster in its constructor and owns the paymaster; admin operates it through callPaymaster."
+    },
+    "BountyVault": {
+      "address": "0x283776AB6c2B139d6097285821AC5EdDe43e115e",
+      "txHash": "0x201d71d90b110fb3d321f3b86591ab07096b646986632bf044082e1cca12b145",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0x283776AB6c2B139d6097285821AC5EdDe43e115e",
+      "createdBy": "ClearAuditDeployer constructor (same transaction)"
+    },
+    "USDCPaymaster": {
+      "address": "0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B",
+      "txHash": "0x201d71d90b110fb3d321f3b86591ab07096b646986632bf044082e1cca12b145",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B",
+      "owner": "0x8fcc1436147bf48ecf57c0b4609b5380e7b5756a",
+      "createdBy": "ClearAuditDeployer constructor (same transaction)"
+    }
+  },
+  "verifiedOnchain": {
+    "BountyVault.token": "0x3600000000000000000000000000000000000000",
+    "BountyVault.paymaster": "0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B",
+    "BountyVault.arbitrator": "0x5B12Ce46C7194aD57d143bC22847224047b1Ef42",
+    "USDCPaymaster.entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+    "USDCPaymaster.vault": "0x283776AB6c2B139d6097285821AC5EdDe43e115e",
+    "USDCPaymaster.usdc": "0x3600000000000000000000000000000000000000"
+  },
+  "mocks": "none"
+}
