@@ -141,3 +141,54 @@ and transaction hash, and confirm nextDealId() == 0 in the sandbox output.
 
 Until that deploy lands, the app shows the feature with a `needs v2` badge and the fund form stays on
 fixed payees.
+
+## Operator model: ClearAudit runs the agent
+
+The rail has no fee switch, and adding one would contradict the property that makes it credible
+(the release path cannot redirect money). So ClearAudit should not take a cut of the escrow. It
+should be a **payee like any other agent**.
+
+That means:
+
+- The lister funds a task naming the operator address as payee. This works on the deployed vault
+  today, with no contract change.
+- The lister or the operator triggers `POST /api/agent/run`, which calls an OpenAI-compatible
+  endpoint configured by `AGENT_API_BASE_URL`, `AGENT_MODEL` and `AGENT_API_KEY` (server only), and
+  receives a deliverable.
+- The deliverable is hashed, the hash is anchored to Arkiv against the deal, and the gate then
+  allows the release. The funder still has to approve: no self-acceptance path.
+- Revenue is the margin between the amount the lister funded and the inference cost, collected by
+  the operator address. It is a service fee, not a protocol fee, and it appears nowhere in the
+  contract.
+
+Why this is a real business, not a garnish:
+
+1. It removes the ghosting problem from the demand side. A lister can pay for an outcome in one
+   session instead of waiting for supply.
+2. It is the only way to demonstrate agent-claimed work before the v2 vault exists, so it doubles as
+   the live demo.
+3. Margin is thin but honest and verifiable: the price is on chain, the cost is inference, and
+   anyone can see the artefact hash that was paid for.
+
+What it must not become:
+
+- No auto-release. If the operator could approve its own work, the dispute fork and the funder's
+  assertion mean nothing.
+- No silent custody. The operator is an address, not a balance inside ClearAudit.
+- No confidentiality overclaim. A task sent to a hosted model leaves the browser, so any page
+  describing the operator must say so. The human flow (finding stays local, only a hash is
+  anchored) is unchanged.
+- No unbounded spend. Per-task token and time budget, and the operator refuses tasks over it.
+
+Environment for the operator, all server side:
+
+```text
+AGENT_API_BASE_URL=https://api.openai.com/v1
+AGENT_MODEL=
+AGENT_API_KEY=
+AGENT_MAX_TOKENS=4000
+OPERATOR_ADDRESS=
+```
+
+`AGENT_*` and `OPERATOR_ADDRESS` never carry `NEXT_PUBLIC_`. A clone without them shows the operator
+as unavailable, which is the correct fail-closed default.
