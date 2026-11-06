@@ -27,6 +27,23 @@ function pick(connectors: ReturnType<typeof useConnect>["connectors"]) {
  * "-32603: An internal error has occurred" is a locked extension, a second
  * extension shadowing `window.ethereum`, or an origin the wallet refuses.
  */
+function describe(e: unknown): string {
+  if (e instanceof Error) {
+    const rich = e as Error & { shortMessage?: string; details?: string; code?: unknown };
+    return rich.shortMessage ?? rich.message ?? rich.details ?? "The wallet returned an empty error.";
+  }
+  if (e && typeof e === "object") {
+    const record = e as { message?: unknown; code?: unknown };
+    if (typeof record.message === "string") return record.message;
+    try {
+      return JSON.stringify(e);
+    } catch {
+      return "The wallet returned an unreadable error.";
+    }
+  }
+  return String(e);
+}
+
 function explain(raw: string) {
   if (/internal error|-32603/i.test(raw)) {
     return "The wallet refused the request (internal error). Unlock it, close other wallet extensions, and retry — wallets only allow connections over https or localhost.";
@@ -54,7 +71,7 @@ export default function ConnectButton({ full = false }: { full?: boolean }) {
     try {
       await connectAsync({ connector });
     } catch (e: unknown) {
-      setFailure(`${connector.name}: ${explain(e instanceof Error ? e.message : String(e))}`);
+      setFailure(`${connector.name}: ${explain(describe(e))}`);
     } finally {
       setBusy(false);
     }
@@ -88,7 +105,7 @@ export default function ConnectButton({ full = false }: { full?: boolean }) {
                 });
                 await switchChainAsync({ chainId: ARC_CHAIN_ID });
               } catch (e: unknown) {
-                setFailure(e instanceof Error ? e.message : "Could not add the Arc network.");
+                setFailure(explain(describe(e)));
               }
             }
           }}

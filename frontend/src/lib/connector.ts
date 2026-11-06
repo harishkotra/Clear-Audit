@@ -19,10 +19,44 @@ function provider(): InjectedProvider | undefined {
   return typeof window !== "undefined" ? window.ethereum : undefined;
 }
 
+/**
+ * Extensions do not all reject with an `Error`. MetaMask throws a plain object
+ * for JSON-RPC failures, and `String(object)` is "[object Object]" — which is
+ * exactly what the UI showed. Normalise here, once, so every caller gets a
+ * message it can print.
+ */
+function toError(e: unknown): Error {
+  if (e instanceof Error) return e;
+  if (e && typeof e === "object") {
+    const record = e as { message?: unknown; code?: unknown; data?: { message?: unknown } };
+    const message =
+      typeof record.message === "string"
+        ? record.message
+        : typeof record.data?.message === "string"
+          ? record.data.message
+          : null;
+    if (message) {
+      const err = new Error(message);
+      if (record.code !== undefined) (err as Error & { code?: unknown }).code = record.code;
+      return err;
+    }
+    try {
+      return new Error(JSON.stringify(e));
+    } catch {
+      return new Error("The wallet returned an error that could not be read.");
+    }
+  }
+  return new Error(String(e));
+}
+
 async function request<T>(method: string, params?: unknown): Promise<T> {
   const p = provider();
   if (!p) throw new Error("No browser wallet found. Install MetaMask, Rabby or OKX Wallet.");
-  return (await p.request({ method, params } as never)) as T;
+  try {
+    return (await p.request({ method, params } as never)) as T;
+  } catch (e) {
+    throw toError(e);
+  }
 }
 
 /**
