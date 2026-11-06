@@ -33,6 +33,13 @@ export default function AppShell({
   const { isConnected, isConnecting, isReconnecting } = useAccount();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Wallets refuse to inject into, or answer requests from, a plain-HTTP origin
+  // that is not localhost. A LAN address such as http://192.168.1.5:3000 looks
+  // like it should work and then fails inside the wallet with "-32603".
+  const insecureOrigin =
+    typeof window !== "undefined" &&
+    window.location.protocol === "http:" &&
+    !["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => setMounted(true), []);
@@ -61,6 +68,15 @@ export default function AppShell({
               ? "Reconnecting to your wallet…"
               : "Every screen behind this point is a wallet view: the payouts you can settle, the rewards you can release, and the devnet settlement you can trigger. Nothing is stored on a server, so there is no account to sign into."}
           </p>
+          {insecureOrigin && (
+            <div className="mt-5 rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-3.5 py-2.5 text-[11.5px] leading-relaxed text-amber-300">
+              This page is served over plain HTTP from{" "}
+              <span className="font-mono">{typeof window !== "undefined" ? window.location.host : ""}</span>
+              . Wallets reject requests from non-secure origins, which surfaces as{" "}
+              <span className="font-mono">-32603 An internal error has occurred</span>. Open{" "}
+              <span className="font-mono">http://localhost:3000</span> instead.
+            </div>
+          )}
           <div className="mt-6">
             <ConnectButton full />
           </div>
