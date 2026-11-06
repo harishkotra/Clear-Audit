@@ -83,8 +83,10 @@ ERC-20 interface, the paymaster points at the vault and uses EntryPoint **v0.7**
 > verified on Arc, but **no product flow routes a `UserOperation` through it**. The company signs
 > `releaseBounty` directly (it pays the USDC gas itself), and the researcher never transacts at all,
 > so a researcher needs no gas token without any sponsorship involved. The sponsored-settlement path
-> is the EF devnet artifact (`/app/gasless`), where an EIP-8141 PAYMENT frame pays the fee. We are not
-> claiming 4337 sponsorship on Arc.
+> is the EF devnet artifact (`/app/gasless`), where a frame transaction pays the fee from the protocol
+> relayer's account. That devnet's current revision accepts only one `VERIFY` frame and will not let a
+> contract paymaster be the payer, so the deployed `SponsorPaymaster` is unused there too — see
+> [`docs/EIP8141.md`](docs/EIP8141.md). We are not claiming 4337 sponsorship on Arc.
 
 > **Arbitrator custody, stated plainly:** the immutable arbitrator is the Arc Studio deploy wallet
 > (`0x5B12…Ef42`), shared by every Arc Studio project. Its key is not held by this repository. A
@@ -175,8 +177,8 @@ see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Foundry tests need `forge instal
 ## Research artifacts
 
 - **EIP-8141 alt-mempool sponsorship** — the EF track artifact. A reference vault on devnet (`1337`)
-  proves a release can be paid without the researcher holding gas, using a frame transaction with a
-  sponsored PAYMENT frame. It is reproducible three ways: the `/app/gasless` page (call the live
+  proves a release can be paid without the researcher holding gas, using an EIP-8141 frame transaction
+  whose fee is paid by the protocol relayer. It is reproducible three ways: the `/app/gasless` page (call the live
   route), `POST /api/claim`, and `npx tsx scripts/claim.ts`. Reference transaction hashes are listed
   in `deployments.json` and on the page. Design and trade-offs: [`docs/EIP8141.md`](docs/EIP8141.md).
 - **Arkiv** — anchors report fingerprints with a 30-day lifetime and is a hard dependency of payout:
@@ -230,7 +232,7 @@ EIP-8141 artifact were built during the event. What we added at the event, speci
 | --- | --- |
 | Contracts | `ClearAuditDeployer`, `BountyVault`, `USDCPaymaster`, Foundry test suite, Arc Studio deployment and `npm run verify:chain` |
 | Arkiv | Schema design, writer path, chain-scoped anchors, fail-closed release guard, read-only query script |
-| EF track | Frame-transaction builder, sponsored PAYMENT frame, alt-mempool devnet deployment, reproducible claim script |
+| EF track | Frame-transaction builder, alt-mempool devnet deployment, unfunded-researcher release, reproducible claim script |
 | Frontend | Marketing site, company/researcher flows, gasless demo page, honest 0%-fee pricing |
 
 ### How we used AI

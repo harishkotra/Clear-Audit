@@ -40,7 +40,6 @@ export async function submitClaim(params: {
   protocolPrivateKey: Hex;
   protocolAddress: Address;
   whitehatAddress: Address;
-  paymasterAddress: Address;
   escrowAddress: Address;
   readRpc: string;
   altMempoolRpc: string;
@@ -59,9 +58,13 @@ export async function submitClaim(params: {
     chainId: 1337,
     sender: params.protocolAddress,
     nonceSeq: BigInt(nonce),
+    // One VERIFY frame, untargeted — this devnet revision rejects a second one
+    // ("frame 1 is a VERIFY frame after the validation prefix (ends at index 0)")
+    // and rejects a VERIFY frame whose target is not the sender. A paymaster
+    // cannot pay for this transaction, so gas comes from the sender: the
+    // protocol relayer. Gasless for the researcher, sponsored by the protocol.
     frames: [
       frame("VERIFY", "EXECUTION_AND_PAYMENT", null, 30_000n),
-      frame("VERIFY", "PAYMENT", params.paymasterAddress, 50_000n),
       frame("SENDER", undefined, params.escrowAddress, 500_000n, {
         data: releaseBountyCallData,
         state: 1_000_000n,

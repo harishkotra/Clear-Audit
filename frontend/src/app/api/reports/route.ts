@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { arkivWriterStatus, createReport, findReport, listReports, unwrap } from "@/lib/arkiv";
+import {
+  anchorExpirySeconds,
+  arkivWriterStatus,
+  createReport,
+  findReport,
+  listReports,
+  unwrap,
+} from "@/lib/arkiv";
 import { readDeal } from "@/lib/arc";
 import { readDevnetDeal } from "@/lib/devnet";
 import { ARC_CHAIN_ID, DEVNET_CHAIN_ID } from "@/lib/constants";
@@ -40,7 +47,7 @@ export async function GET(req: Request) {
       amount: String(unwrap(e.amount) ?? ""),
       encryptedPayloadHash: unwrap(e.encryptedPayloadHash) ?? null,
       severity: unwrap(e.severity) ?? null,
-      expiresAt: String(unwrap(e.expiresAt) ?? e.$expiresAt ?? ""),
+      expiresAt: anchorExpirySeconds(e) !== null ? String(anchorExpirySeconds(e)) : null,
     }));
 
     return NextResponse.json({ reports });
@@ -114,7 +121,7 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({
         entityKey: existing.$key,
-        expiresAt: String(unwrap(existing.expiresAt) ?? existing.$expiresAt ?? ""),
+        expiresAt: anchorExpirySeconds(existing) !== null ? String(anchorExpirySeconds(existing)) : null,
         deduplicated: true,
       });
     }

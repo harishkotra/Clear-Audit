@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { DEAL_STATUS } from "@/lib/abi";
 import { readDeal } from "@/lib/arc";
-import { findReport, unwrap } from "@/lib/arkiv";
+import { anchorExpirySeconds, findReport, unwrap } from "@/lib/arkiv";
 import { ARC_CHAIN_ID } from "@/lib/constants";
 
 /**
@@ -50,8 +50,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const expiry = Number(unwrap(report.expiresAt) ?? report.$expiresAt ?? 0);
-    if (Number.isFinite(expiry) && expiry > 0 && Date.now() / 1000 > expiry) {
+    const expiry = anchorExpirySeconds(report);
+    if (expiry === null) {
+      return NextResponse.json(
+        { ok: false, reason: "The Arkiv anchor has no readable expiry, so it cannot be verified as live." },
+        { status: 403 },
+      );
+    }
+    if (Date.now() / 1000 > expiry) {
       return NextResponse.json(
         { ok: false, reason: "The Arkiv anchor has expired; the evidence is no longer verifiable." },
         { status: 403 },
@@ -87,7 +93,7 @@ export async function POST(req: Request) {
       anchor: {
         key: report.$key,
         severity: unwrap(report.severity) ?? null,
-        expiresAt: String(expiry || unwrap(report.expiresAt) || ""),
+        expiresAt: expiry ? String(expiry) : "",
         encryptedPayloadHash: unwrap(report.encryptedPayloadHash) ?? null,
       },
     });

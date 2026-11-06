@@ -61,31 +61,37 @@
       "readRpc": "https://altmempool.forshtat.com",
       "role": "EIP-8141 gasless settlement prototype (research artifact, not a bridge)",
       "contracts": {
-        "BountyVault": "0x8460274B30764c09799f275280CEbA1F1dC5B347",
-        "SponsorPaymaster": "0xA03613a311632EEc5a8bE80CeF034d456d4D6F02",
-        "MockUSDC": "0x1649e232ee7114d1692a3511b49656daa5a4c565",
-        "note": "Pre-reset addresses, kept for the record. Redeploy with contracts/script/DeployDevnet.s.sol inside Arc Studio (see docs/EIP8141.md)."
+        "BountyVault": "0x41CDbF113356EC57dDF893b15e8F3D4Fec6a9234",
+        "SponsorPaymaster": "0xC04F147b94D002dCe42953c145906D652999A9A4",
+        "MockUSDC": "0xe7AD7dc876cD1Bc086aD69939B6d4ffb1Cf0574b"
       },
       "referenceTransactions": [
         {
-          "hash": "0x3ada0c73c3ddafebc669fcf168fb5f2131be7a84d5bf371194cbb33f37d37b43",
-          "description": "gasless release via alt-mempool frame transaction"
+          "hash": "0xddb34fe4677e40f1973a8bc76680b490630455a4377f2f5979803660da6c6431",
+          "description": "BountyVault deployment"
         },
         {
-          "hash": "0xec8cefbbe307e52f529470a94e2e056c121ce32edfa7f6c6b9d4ed32af0d5ddb",
-          "description": "sponsored release"
+          "hash": "0xadc0acef6f9bcda46ae8135c0c049350d697d04c5ebc14f9775bcf07e020e84b",
+          "description": "SponsorPaymaster deployment, funded with 50 ETH via its payable constructor"
         },
         {
-          "hash": "0x17c3a071785e00b151e65780560515327cd9fb3d56cd504dfd45d8c8e844fa7d",
-          "description": "sponsored transfer"
+          "hash": "0xd58790181e05965ebc90555f064fd7082ee9c94306bc789790f7d532f4acc530",
+          "description": "MockUSDC deployment"
+        },
+        {
+          "hash": "0xcafe04e41887b135a882843b3a95ac53082d967631c7ad521d06d907203500bb",
+          "description": "deal #0 opened: 1 000 mUSDC escrowed for the researcher"
         }
       ],
       "notes": [
-        "Deal #0 is already Released. The app never hardcodes a deal id.",
-        "SponsorPaymaster is explicitly demo-only (it sponsors any caller while funded)."
+        "Deal #0 is Open with 1 000 mUSDC escrowed \u2014 the gasless demo has something to settle.",
+        "SponsorPaymaster is explicitly demo-only: it sponsors any caller while funded.",
+        "Rebuild command and the gas trap that cost us three reverted creations: deployments.devnet.json."
       ],
-      "status": "stale \u2014 the shared devnet was reset (head dropped to #1856); the addresses below no longer have code",
-      "referenceTransactionsNote": "Pre-reset reference transactions: the devnet was reset, so these hashes no longer resolve. The flow they demonstrate is reproduced by scripts/claim.ts after a redeploy."
+      "status": "live \u2014 deployed through Arc Studio on 2026-11-06 and verified by independent eth_call (see deployments.devnet.json)",
+      "referenceTransactionsNote": "The pre-reset stack (BountyVault 0x8460\u2026b347) is recorded in docs/EIP8141.md; the shared devnet was reset and those hashes no longer resolve.",
+      "arbitrator": "0x4E9dE2B8d17CC142A615573be3aC7901CBc1787a",
+      "researcher": "0xBEEF00000000000000000000000000000000BEEf"
     }
   },
   "arbitratorCaveat": "BountyVault.arbitrator is immutable and currently points at the Arc Studio deploy wallet. A fresh deployment can set ARBITRATOR to a project-controlled address."

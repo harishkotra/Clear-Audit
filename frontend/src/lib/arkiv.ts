@@ -15,12 +15,17 @@ import { privateKeyToAccount } from "viem/accounts";
 export const REPORT_RETENTION_DAYS = 30;
 
 export const ReportSchema = defineSchema("bounty_reports", {
-  kind: str(),
+  // Only indexed columns can be filtered on (Arkiv matches nothing for an
+  // unindexed comparison — it does not error). An earlier version of this
+  // schema declared the columns without `.indexed()`, so every anchor was
+  // unqueryable and the release guard refused every payout. Do not remove
+  // these: the guard's `kind`/`chainId`/`dealId` clauses depend on them.
+  kind: str().indexed(),
   /** Which chain the deal lives on. Arc (5042002) or the EF devnet (1337). */
-  chainId: u64(),
-  dealId: u64(),
-  protocolWallet: addr(),
-  whitehatWallet: addr(),
+  chainId: u64().indexed(),
+  dealId: u64().indexed(),
+  protocolWallet: addr().indexed(),
+  whitehatWallet: addr().indexed(),
   amount: u64(),
   encryptedPayloadHash: str(),
   severity: str(),
@@ -39,6 +44,20 @@ export type ReportEntity = {
   severity?: string | { value: string };
   expiresAt?: number | bigint | { value: number | bigint };
 };
+
+/**
+ * The `expiresAt` we write is unix seconds. The system `$expiresAt` is a BLOCK
+ * NUMBER (Rabdi runs 2 s blocks: an anchor created at block 286 410 with 30
+ * days of retention reports `$expiresAt = 1 582 410`). Comparing `$expiresAt`
+ * to `Date.now()` is therefore always "expired". Read the attribute, and treat
+ * a missing one as not-verifiable rather than as live.
+ */
+export function anchorExpirySeconds(entity: ReportEntity): number | null {
+  const raw = unwrap(entity.expiresAt);
+  if (raw === undefined || raw === null) return null;
+  const seconds = Number(raw);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
 
 export function unwrap<T>(value: T | { value: T } | undefined): T | undefined {
   if (value && typeof value === "object" && "value" in (value as object)) {

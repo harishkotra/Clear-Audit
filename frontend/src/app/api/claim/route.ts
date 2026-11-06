@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { privateKeyToAccount } from "viem/accounts";
 import { submitClaim } from "@/utils/altMempool";
-import { findReport, unwrap } from "@/lib/arkiv";
+import { anchorExpirySeconds, findReport, unwrap } from "@/lib/arkiv";
 import { DEAL_STATUS } from "@/lib/abi";
 import { readDevnetDeal, readDevnetHead } from "@/lib/devnet";
 import {
   ALT_MEMPOOL_READ_RPC,
   ALT_MEMPOOL_RPC,
   DEVNET_CHAIN_ID,
-  DEVNET_PAYMASTER_ADDRESS,
   DEVNET_VAULT_ADDRESS,
 } from "@/lib/constants";
 
@@ -73,8 +72,11 @@ async function verifyAnchor(input: {
   }
   if (!report) return { ok: false, reason: "No live Arkiv anchor for this devnet bounty." };
 
-  const expiry = Number(unwrap(report.expiresAt) ?? report.$expiresAt ?? 0);
-  if (Number.isFinite(expiry) && expiry > 0 && Date.now() / 1000 > expiry) {
+  const expiry = anchorExpirySeconds(report);
+  if (expiry === null) {
+    return { ok: false, reason: "Arkiv anchor has no readable expiry; it cannot be verified as live." };
+  }
+  if (Date.now() / 1000 > expiry) {
     return { ok: false, reason: "Arkiv anchor expired; evidence is no longer verifiable." };
   }
 
@@ -156,7 +158,6 @@ export async function POST(req: Request) {
       protocolAddress: address,
       whitehatAddress: deal.whitehat,
       escrowAddress: DEVNET_VAULT_ADDRESS,
-      paymasterAddress: DEVNET_PAYMASTER_ADDRESS,
       readRpc: ALT_MEMPOOL_READ_RPC,
       altMempoolRpc: ALT_MEMPOOL_RPC,
     });

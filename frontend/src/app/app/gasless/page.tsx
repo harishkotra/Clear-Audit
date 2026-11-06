@@ -7,9 +7,9 @@ import { readDevnetState } from "@/lib/devnet";
 import { DEVNET_CHAIN_ID } from "@/lib/constants";
 
 const REFERENCES = [
-  ["0x3ada0c73c3ddafebc669fcf168fb5f2131be7a84d5bf371194cbb33f37d37b43", "gasless release via frame transaction"],
-  ["0xec8cefbbe307e52f529470a94e2e056c121ce32edfa7f6c6b9d4ed32af0d5ddb", "sponsored release"],
-  ["0x17c3a071785e00b151e65780560515327cd9fb3d56cd504dfd45d8c8e844fa7d", "sponsored transfer"],
+  ["0x9d69aae87b60cf040d81cdb9e5f826ebd50185679259f08f16c22fb861986556", "release paid by the protocol relayer, researcher received 1 000 mUSDC"],
+  ["0xefe4847c428f21fb6f8d65ff4572179559c296a017370d7db7b6a275d73dd863", "deal #1 opened, 500 mUSDC escrowed and still open"],
+  ["0xddb34fe4677e40f1973a8bc76680b490630455a4377f2f5979803660da6c6431", "BountyVault deployed on the devnet"],
 ] as const;
 
 function usdc6(v: bigint) {
@@ -50,7 +50,7 @@ async function DevnetSection() {
           unit="mUSDC"
           hint="Devnet mock USDC, valueless"
         />
-        <Stat label="Researcher gas" value="0" unit="ETH" hint="Paid by the sponsor frame" />
+        <Stat label="Researcher gas" value="0" unit="ETH" hint="Paid by the protocol relayer" />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -62,8 +62,8 @@ async function DevnetSection() {
           </p>
           {failure ? (
             <div className="rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-300">
-              The EF devnet is not answering right now ({failure}). The three reference transactions
-              below were mined on this chain and remain the evidence for the flow.
+              The EF devnet is not answering right now ({failure}). The reference transactions below
+              were mined on this chain and remain the evidence for the flow.
             </div>
           ) : state && state.head && state.head.ageSeconds > 600 ? (
             <div className="rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-300">
@@ -90,13 +90,13 @@ async function DevnetSection() {
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-zinc-500">Vault</dt>
                 <dd className="font-mono text-zinc-300">
-                  {state?.vault.slice(0, 10) ?? "0x8460274B"}…
+                  {state?.vault.slice(0, 10) ?? "0x41CDbF11"}…
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-zinc-500">Sponsor</dt>
-                <dd className="font-mono text-zinc-300">
-                  {state?.paymaster.slice(0, 10) ?? "0xA03613a3"}…
+                <dt className="text-zinc-500">Paymaster</dt>
+                <dd className="font-mono text-zinc-300" title="Deployed and funded, but this devnet revision accepts only one VERIFY frame, so no frame routes payment through it">
+                  {state?.paymaster.slice(0, 10) ?? "0xC04F147b"}… <span className="text-zinc-600">unused</span>
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -105,7 +105,7 @@ async function DevnetSection() {
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-zinc-500">Frames</dt>
-                <dd className="text-zinc-300">VERIFY · PAYMENT · SENDER</dd>
+                <dd className="text-zinc-300">VERIFY · SENDER</dd>
               </div>
             </dl>
           </div>

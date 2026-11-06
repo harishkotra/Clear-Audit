@@ -39,7 +39,10 @@ async function main() {
   const page = await client.query(clauses.join(" AND "), {
     select: {
       $key: true,
+      // $expiresAt is a BLOCK NUMBER on Rabdi (2 s blocks), not a timestamp —
+      // selected for display only; liveness is decided by the `expiresAt` attribute.
       $expiresAt: true,
+      expiresAt: true,
       dealId: true,
       whitehatWallet: true,
       protocolWallet: true,
@@ -50,16 +53,35 @@ async function main() {
   });
 
   const now = Date.now() / 1000;
-  const live = (page.entities ?? []).filter((e) => Number(e.$expiresAt) > now);
+  const secs = (v: unknown): number => {
+    if (v && typeof v === "object" && "value" in (v as object)) {
+      return Number((v as { value: unknown }).value);
+    }
+    return Number(v);
+  };
+  const addr = (v: unknown): string => {
+    const raw = v && typeof v === "object" && "value" in (v as object)
+      ? (v as { value: unknown }).value
+      : v;
+    if (typeof raw === "string") return raw;
+    if (typeof raw === "bigint" || typeof raw === "number") {
+      return "0x" + BigInt(raw).toString(16).padStart(40, "0").slice(-40);
+    }
+    return String(raw);
+  };
+  const live = (page.entities ?? []).filter((e) => {
+    const exp = secs(e.expiresAt);
+    return Number.isFinite(exp) && exp > now;
+  });
 
   console.log(
     `chain ${chainId}${dealId !== undefined ? `, deal ${dealId}` : ""}: ${live.length} live anchor(s)`,
   );
   for (const e of live) {
-    const exp = new Date(Number(e.$expiresAt) * 1000).toISOString();
+    const exp = new Date(secs(e.expiresAt) * 1000).toISOString();
     console.log(
-      `  deal ${e.dealId}  whitehat ${e.whitehatWallet}  amount ${e.amount}  ` +
-        `hash ${String(e.encryptedPayloadHash).slice(0, 12)}…  expires ${exp}`,
+      `  deal ${secs(e.dealId)}  whitehat ${addr(e.whitehatWallet)}  amount ${secs(e.amount)}  ` +
+        `hash ${String((e.encryptedPayloadHash as { value?: string })?.value ?? e.encryptedPayloadHash).slice(0, 12)}…  expires ${exp}`,
     );
   }
   if (live.length === 0) {

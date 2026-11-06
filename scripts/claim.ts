@@ -8,7 +8,7 @@
  *   DEAL_ID=1 PROTOCOL_PRIVATE_KEY=0x... npx tsx scripts/claim.ts
  *
  * The transaction is an EIP-8141 frame transaction submitted straight to the
- * Alternative Mempool: VERIFY (sponsorship scope) → VERIFY/PAYMENT (sponsor)
+ * Alternative Mempool: one VERIFY frame (EXECUTION_AND_PAYMENT) → SENDER
  * → SENDER (vault release). No EntryPoint, no bundler deposit.
  *
  * NOTE: the Arkiv evidence guard is enforced by the app's /api/claim route.
@@ -31,7 +31,6 @@ const devnet = deployments.chains.efAltMempool;
 const ALT_MEMPOOL_RPC = process.env.ALT_MEMPOOL_RPC ?? devnet.rpc;
 const READ_RPC = process.env.ALT_MEMPOOL_READ_RPC ?? devnet.readRpc;
 const VAULT = devnet.contracts.BountyVault as Address;
-const PAYMASTER = devnet.contracts.SponsorPaymaster as Address;
 
 const pk = process.env.PROTOCOL_PRIVATE_KEY as Hex | undefined;
 if (!pk || !/^0x[0-9a-fA-F]{64}$/.test(pk)) {
@@ -109,7 +108,6 @@ async function main() {
     nonceSeq: BigInt(nonce),
     frames: [
       txLib.frame(profile, "VERIFY", { scope: "EXECUTION_AND_PAYMENT", target: null, execution: 30_000n }),
-      txLib.frame(profile, "VERIFY", { scope: "PAYMENT", target: PAYMASTER, execution: 50_000n }),
       txLib.frame(profile, "SENDER", {
         scope: undefined,
         target: VAULT,

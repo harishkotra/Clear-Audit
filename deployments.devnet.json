@@ -1,0 +1,82 @@
+{
+  "network": "EIP-8141 alt-mempool devnet",
+  "chainId": 1337,
+  "rpcUrl": "https://altmempool.forshtat.com/rpc",
+  "readRpc": "https://altmempool.forshtat.com",
+  "role": "research artifact for the Ethereum Foundation track \u2014 not a bridge, not Arc settlement",
+  "deployedVia": "Arc Studio sandbox (session clearaudit, app 3505cc60-6a37-442c-8b75-9a4d516007c1)",
+  "deployedAt": "2026-11-06",
+  "relayer": "0x5544596212F91984C986A919C8026DF0576816f9",
+  "arbitrator": "0x4E9dE2B8d17CC142A615573be3aC7901CBc1787a",
+  "researcher": "0xBEEF00000000000000000000000000000000BEEf",
+  "contracts": {
+    "MockUSDC": {
+      "address": "0xe7AD7dc876cD1Bc086aD69939B6d4ffb1Cf0574b",
+      "txHash": "0xd58790181e05965ebc90555f064fd7082ee9c94306bc789790f7d532f4acc530"
+    },
+    "SponsorPaymaster": {
+      "address": "0xC04F147b94D002dCe42953c145906D652999A9A4",
+      "txHash": "0xadc0acef6f9bcda46ae8135c0c049350d697d04c5ebc14f9775bcf07e020e84b"
+    },
+    "BountyVault": {
+      "address": "0x41CDbF113356EC57dDF893b15e8F3D4Fec6a9234",
+      "txHash": "0xddb34fe4677e40f1973a8bc76680b490630455a4377f2f5979803660da6c6431"
+    }
+  },
+  "verified": {
+    "method": "independent eth_getCode + eth_call from a machine outside the sandbox",
+    "checks": [
+      "code present at MockUSDC, SponsorPaymaster, BountyVault",
+      "vault.token() == MockUSDC",
+      "vault.paymaster() == SponsorPaymaster",
+      "vault.arbitrator() == 0x4E9dE2B8d17CC142A615573be3aC7901CBc1787a",
+      "vault.nextDealId() == 1",
+      "deals(0): protocol = relayer, whitehat = researcher, amount = 1000000000, status = 1 (Open)",
+      "paymaster holds 50 ETH; relayer holds 9 000e6 mUSDC"
+    ]
+  },
+  "rebuild": {
+    "where": "inside the Arc Studio sandbox only \u2014 the local contracts/ copy is a pulled mirror",
+    "command": "forge script contracts/script/DeployDevnet.s.sol:DeployDevnet --rpc-url https://altmempool.forshtat.com/rpc --broadcast --legacy --skip-simulation --slow --private-key $PROTOCOL_PRIVATE_KEY",
+    "whySkipSimulation": "the devnet charges roughly 5x more gas for deployed code than Foundry's local EVM schedule assumes. With simulation enabled Foundry sends its own (too small) gas limit and every creation reverts with gasUsed == gasLimit, which looks like a constructor revert and is not one.",
+    "afterRebuild": [
+      "update frontend/src/lib/constants.ts (DEVNET_VAULT_ADDRESS, DEVNET_PAYMASTER_ADDRESS)",
+      "update frontend/.env.local NEXT_PUBLIC_DEVNET_* , then rebuild \u2014 NEXT_PUBLIC_* is inlined at build time",
+      "replace this file's addresses, txs and verified block"
+    ]
+  },
+  "note": "The devnet is shared infrastructure and is reset during the event. If eth_getCode returns 0x for the vault, the stack is gone: rebuild with the command above and re-anchor.",
+  "deals": {
+    "0": "opened and settled: 1 000 mUSDC escrowed at creation, released to the researcher through the EIP-8141 frame transaction below",
+    "1": "open, 500 mUSDC, ready to be settled by anyone opening /app/gasless"
+  },
+  "setupTxs": {
+    "mint": "0xcf03ebeb926199694f21a6f352f906bc1056a911302c847ee031f92b7549a350",
+    "approve": "0x46f1e2c2ef29186f1a7130d0a07fdeaa18183e2443fc25d1df0862984ae7c275",
+    "createBounty(deal 0)": "0xcafe04e41887b135a882843b3a95ac53082d967631c7ad521d06d907203500bb",
+    "createBounty(deal 1)": "0xefe4847c428f21fb6f8d65ff4572179559c296a017370d7db7b6a275d73dd863"
+  },
+  "transactions": {
+    "frameRelease(deal 0)": {
+      "hash": "0x9d69aae87b60cf040d81cdb9e5f826ebd50185679259f08f16c22fb861986556",
+      "block": 2035,
+      "type": "0x6 (frame transaction)",
+      "gasUsed": 158995,
+      "frames": [
+        "0: VERIFY scope=EXECUTION_AND_PAYMENT target=null \u2014 status 0x1, gasUsed 0x64",
+        "1: SENDER target=BountyVault releaseBounty(0,0,0xBEEF\u2026) \u2014 status 0x1, gasUsed 0xd7e5"
+      ],
+      "result": "deals(0).status = 3 (Released); researcher mUSDC balance 0 -> 1 000e6; the researcher signed nothing and holds no gas"
+    }
+  },
+  "frameLayout": {
+    "observed": "the devnet revision now running accepts exactly one VERIFY frame, untargeted",
+    "rejected": {
+      "VERIFY(EXECUTION_AND_PAYMENT) + VERIFY(PAYMENT)@paymaster + SENDER": "frame 1 is a VERIFY frame after the validation prefix (ends at index 0)",
+      "VERIFY(PAYMENT)@paymaster + VERIFY(EXECUTION) + SENDER": "frame transaction validation prefix not recognized",
+      "VERIFY(EXECUTION_AND_PAYMENT)@paymaster + SENDER": "frame 0 (self_verify) targets 0xC04F\u2026, expected tx.sender 0x5544\u2026 or null",
+      "two untargeted VERIFY frames + SENDER": "same prefix rejection"
+    },
+    "consequence": "SponsorPaymaster is deployed and funded (50 ETH) but no frame routes payment through it; the fee is paid by tx.sender, the protocol relayer. The gasless property holds for the researcher, who never transacts. Written up in docs/EIP8141.md."
+  }
+}

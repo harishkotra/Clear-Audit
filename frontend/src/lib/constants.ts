@@ -26,9 +26,9 @@ export const ALT_MEMPOOL_READ_RPC =
   process.env.NEXT_PUBLIC_ALT_MEMPOOL_READ_RPC ?? "https://altmempool.forshtat.com";
 
 export const DEVNET_VAULT_ADDRESS = (process.env.NEXT_PUBLIC_DEVNET_VAULT_ADDRESS ??
-  "0x8460274B30764c09799f275280CEbA1F1dC5B347") as `0x${string}`;
+  "0x41CDbF113356EC57dDF893b15e8F3D4Fec6a9234") as `0x${string}`;
 export const DEVNET_PAYMASTER_ADDRESS = (process.env.NEXT_PUBLIC_DEVNET_PAYMASTER_ADDRESS ??
-  "0xA03613a311632EEc5a8bE80CeF034d456d4D6F02") as `0x${string}`;
+  "0xC04F147b94D002dCe42953c145906D652999A9A4") as `0x${string}`;
 
 // ─────────────── Backwards-compatible aliases (legacy) ──────────
 // These names were used by the first two-screen prototype. They point at
