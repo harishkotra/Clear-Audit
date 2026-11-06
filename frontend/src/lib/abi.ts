@@ -421,6 +421,19 @@ export const BOUNTY_VAULT_V2_ABI = [
   },
   {
     "type": "function",
+    "name": "MAX_CONTEST_WINNERS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "arbitrator",
     "inputs": [],
     "outputs": [
@@ -445,6 +458,29 @@ export const BOUNTY_VAULT_V2_ABI = [
         "name": "payee",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "award",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "winners",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "amounts",
+        "type": "uint128[]",
+        "internalType": "uint128[]"
       }
     ],
     "outputs": [],
@@ -552,6 +588,49 @@ export const BOUNTY_VAULT_V2_ABI = [
   },
   {
     "type": "function",
+    "name": "contestEntered",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "contestEntrants",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "createBounty",
     "inputs": [
       {
@@ -559,6 +638,35 @@ export const BOUNTY_VAULT_V2_ABI = [
         "type": "address",
         "internalType": "address"
       },
+      {
+        "name": "amount",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "deadline",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "criteriaHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "createContest",
+    "inputs": [
       {
         "name": "amount",
         "type": "uint128",
@@ -678,6 +786,11 @@ export const BOUNTY_VAULT_V2_ABI = [
         "name": "criteriaHash",
         "type": "bytes32",
         "internalType": "bytes32"
+      },
+      {
+        "name": "contestMode",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -685,6 +798,19 @@ export const BOUNTY_VAULT_V2_ABI = [
   {
     "type": "function",
     "name": "dispute",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "enterContest",
     "inputs": [
       {
         "name": "id",
@@ -830,6 +956,24 @@ export const BOUNTY_VAULT_V2_ABI = [
         "name": "id",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "registerEntrant",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "entrant",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -1043,6 +1187,75 @@ export const BOUNTY_VAULT_V2_ABI = [
   },
   {
     "type": "event",
+    "name": "ContestAwarded",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "winners",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ContestEntered",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "entrant",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ContestSharePaid",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "DisputeResolved",
     "inputs": [
       {
@@ -1190,6 +1403,16 @@ export const BOUNTY_VAULT_V2_ABI = [
   },
   {
     "type": "error",
+    "name": "AlreadyEntered",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AmountMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "BountyNotOpen",
     "inputs": []
   },
@@ -1221,6 +1444,11 @@ export const BOUNTY_VAULT_V2_ABI = [
   {
     "type": "error",
     "name": "NotClaimable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotContest",
     "inputs": []
   },
   {
@@ -1261,6 +1489,11 @@ export const BOUNTY_VAULT_V2_ABI = [
   {
     "type": "error",
     "name": "TokenNotContract",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TooManyWinners",
     "inputs": []
   },
   {

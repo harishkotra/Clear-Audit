@@ -48,7 +48,22 @@ export async function GET() {
             abi: BOUNTY_VAULT_V2_ABI,
             functionName: "deals",
             args: [id],
-          }) as Promise<readonly [`0x${string}`, `0x${string}`, `0x${string}`, bigint, bigint, bigint, number, boolean, boolean, `0x${string}`, `0x${string}`]>,
+          }) as Promise<
+            readonly [
+              `0x${string}`,
+              `0x${string}`,
+              `0x${string}`,
+              bigint,
+              bigint,
+              bigint,
+              number,
+              boolean,
+              boolean,
+              `0x${string}`,
+              `0x${string}`,
+              boolean,
+            ]
+          >,
           features.evidenceGate ? readEvidence(id) : Promise.resolve(null),
         ]);
 
@@ -64,6 +79,7 @@ export async function GET() {
           agentMode: row[7],
           assigned: row[8],
           criteriaHash: row[10],
+          contestMode: Boolean(row[11]),
           evidence,
         };
       }),

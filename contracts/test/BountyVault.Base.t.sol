@@ -63,6 +63,11 @@ abstract contract BountyVaultTestBase is Test {
         id = vault.createOpenTask(uint128(amount), deadline, CRIT);
     }
 
+    function _contest(uint64 deadline) internal returns (uint256 id) {
+        vm.prank(payer);
+        id = vault.createContest(uint128(AMT), deadline, CRIT);
+    }
+
     // ───────── action helpers ─────────
 
     function _claim(uint256 id, address who) internal {
@@ -104,7 +109,7 @@ abstract contract BountyVaultTestBase is Test {
     }
 
     function _claimedAt(uint256 id) internal view returns (uint64 ca) {
-        (,,,,, ca,,,,,) = vault.deals(id);
+        (,,,,, ca,,,,,,) = vault.deals(id);
     }
 
     function _vaultBal() internal view returns (uint256) {

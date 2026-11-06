@@ -12,22 +12,22 @@ forge script contracts/script/DeployVaultV2.s.sol:DeployVaultV2
 
 ## What is deployed
 
-### v3, the live settlement target
+### v4, the live settlement target
 
 | Contract | Address |
 | --- | --- |
-| `BountyVault` v3 | `0x2334493e0EeD42b0E45fF8E64862dBDA50A41772` |
+| `BountyVault` v4 | `0x9D500710df8036e4BdF38Bf9A6CA7364Cd4e26C1` |
 | USDC (ERC-20 view) | `0x3600000000000000000000000000000000000000` |
 | Arbitrator | `0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2` |
 | Paymaster | `0x0000000000000000000000000000000000000000` |
 | Challenge window | 300 seconds |
 
 Deployment transaction:
-`0x31a80755a47ccdeb1fd8a29337e8f14a08ea913c78989f7b6030ee4800723f7c` (block 71035461,
-1776686 gas).
+`0xab6a72fd3d01761e46a07b71237af4c2d9c202805ab3bce321440165326e12f4` (block 71038680,
+2583132 gas).
 
-`release(id)` requires a live `commitEvidence` fingerprint. After the challenge window anyone may
-`settleAfterChallenge`.
+`release(id)` requires a live `commitEvidence` fingerprint. Contests use `award`. After the
+challenge window anyone may `settleAfterChallenge` on a single-payee deal.
 
 ### v2, superseded
 

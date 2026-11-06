@@ -205,23 +205,23 @@ async function EvidenceBody({
                   {data.proven.map((p) => (
                     <li key={p.what}>
                       <div className="text-[#ece7dd]">{p.what}</div>
-                      {"createTx" in p && p.createTx && (
+                      {p.createTx && (
                         <a className="mt-1 block text-[#8bd17c] hover:underline" href={txUrl(p.createTx)} target="_blank" rel="noreferrer">
                           create {shortAddress(p.createTx)} ↗
                         </a>
                       )}
-                      {"anchorTx" in p && p.anchorTx && (
+                      {p.anchorTx && (
                         <a className="block text-[#8bd17c] hover:underline" href={txUrl(p.anchorTx)} target="_blank" rel="noreferrer">
                           anchor {shortAddress(p.anchorTx)} ↗
                         </a>
                       )}
-                      {"releaseTx" in p && p.releaseTx && (
+                      {p.releaseTx && (
                         <a className="block text-[#8bd17c] hover:underline" href={txUrl(p.releaseTx)} target="_blank" rel="noreferrer">
                           release {shortAddress(p.releaseTx)} ↗
                         </a>
                       )}
-                      {"guard" in p && p.guard && <div className="mt-1 text-[#8d887f]">{p.guard}</div>}
-                      {"result" in p && p.result && <div className="text-[#8d887f]">{p.result}</div>}
+                      {p.guard && <div className="mt-1 text-[#8d887f]">{p.guard}</div>}
+                      {p.result && <div className="text-[#8d887f]">{p.result}</div>}
                     </li>
                   ))}
                 </ul>

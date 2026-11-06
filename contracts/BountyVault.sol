@@ -7,12 +7,14 @@ import "./interfaces/IERC20.sol";
  * +------------------------------------------------------------------+
  * |              ClearAudit v3 - Zero-Trust Bug Bounty Vault           |
  * +------------------------------------------------------------------+
- * | Payers escrow USDC for named payees or claimable agent tasks.      |
- * | Release requires a committed evidence fingerprint that has not     |
- * | expired. After a challenge window, anyone may settle to the payee. |
- * | Only the payer can release early; a payee can never self-release.  |
+ * | Payers escrow USDC for named payees, claimable agent tasks, or     |
+ * | contests. A contest accepts many entrants; the arbitrator awards   |
+ * | the escrow to one or more of them in a single transaction.         |
+ * | Release and award require a committed evidence fingerprint that    |
+ * | has not expired. After a challenge window, anyone may settle a     |
+ * | single-payee deal. Only the payer can release early.               |
  * | Either party can dispute. The fixed arbitrator decides disputes,  |
- * | and only Open deals can expire into a refund to the payer.        |
+ * | awards contests, and only Open deals can expire into a refund.    |
  * | Arbitration is trusted: "zero-trust" does not remove that trust.   |
  * | Fees are always ZERO. Sponsored gas funds the payer's own release |
  * | call; the immutable paymaster is wiring, not a privileged caller. |
@@ -94,6 +96,7 @@ contract BountyVault {
         bool assigned;
         address arbitrator;
         bytes32 criteriaHash;
+        bool contestMode;
     }
 
     /// @notice Historical deposits remain recorded after terminal settlement.
@@ -105,6 +108,13 @@ contract BountyVault {
     mapping(uint256 => uint64) public evidenceExpiresAt;
     /// @notice Unix seconds after which anyone may settleAfterChallenge. Zero until commit.
     mapping(uint256 => uint64) public challengeUntil;
+
+    /// @notice Entrants registered on a contest. Empty for every other deal kind.
+    mapping(uint256 => mapping(address => bool)) public contestEntered;
+    /// @notice How many distinct addresses have entered this contest.
+    mapping(uint256 => uint32) public contestEntrants;
+
+    uint256 public constant MAX_CONTEST_WINNERS = 8;
 
     // ────────────────────────── Events ─────────────────────────────
 
@@ -127,6 +137,9 @@ contract BountyVault {
     event BountyCancelled(uint256 indexed id, address indexed payer, uint128 amount);
     event EvidenceCommitted(uint256 indexed id, bytes32 hash, uint64 expiresAt, uint64 challengeUntil);
     event SettledAfterChallenge(uint256 indexed id, address indexed payee, uint128 amount, address caller);
+    event ContestEntered(uint256 indexed id, address indexed entrant);
+    event ContestAwarded(uint256 indexed id, uint256 winners, uint128 amount);
+    event ContestSharePaid(uint256 indexed id, address indexed winner, uint128 amount);
 
     // ────────────────────────── Errors ─────────────────────────────
 
@@ -151,6 +164,10 @@ contract BountyVault {
     error AlreadyCommitted();
     error ChallengePending();
     error ZeroWindow();
+    error NotContest();
+    error AlreadyEntered();
+    error AmountMismatch();
+    error TooManyWinners();
 
     // ────────────────────────── Constructor ────────────────────────
 
@@ -206,7 +223,8 @@ contract BountyVault {
             agentMode: false,
             assigned: true,
             arbitrator: arbitrator,
-            criteriaHash: criteriaHash
+            criteriaHash: criteriaHash,
+            contestMode: false
         });
         _pull(msg.sender, amount);
         emit BountyCreated(id, msg.sender, payee, amount, deadline, criteriaHash, false);
@@ -235,10 +253,41 @@ contract BountyVault {
             agentMode: true,
             assigned: false,
             arbitrator: arbitrator,
-            criteriaHash: criteriaHash
+            criteriaHash: criteriaHash,
+            contestMode: false
         });
         _pull(msg.sender, amount);
         emit BountyCreated(id, msg.sender, address(0), amount, deadline, criteriaHash, true);
+    }
+
+    /// @notice Escrow a prize that many addresses may enter. The arbitrator awards shares.
+    /// @dev No exclusive claim. A deadline is mandatory so an un-awarded contest can refund.
+    function createContest(uint128 amount, uint64 deadline, bytes32 criteriaHash)
+        external
+        returns (uint256 id)
+    {
+        if (amount == 0) revert ZeroAmount();
+        if (deadline == 0) revert DeadlineRequired();
+        if (deadline <= block.timestamp) revert DeadlinePassed();
+        if (msg.sender == arbitrator) revert RoleConflict();
+
+        id = nextDealId++;
+        deals[id] = Deal({
+            payer: msg.sender,
+            payee: address(0),
+            token: address(token),
+            amount: amount,
+            deadline: deadline,
+            claimedAt: 0,
+            status: Status.Open,
+            agentMode: false,
+            assigned: false,
+            arbitrator: arbitrator,
+            criteriaHash: criteriaHash,
+            contestMode: true
+        });
+        _pull(msg.sender, amount);
+        emit BountyCreated(id, msg.sender, address(0), amount, deadline, criteriaHash, false);
     }
 
     // ────────────────────────── Payee Selection ────────────────────
@@ -249,6 +298,7 @@ contract BountyVault {
     function claimTask(uint256 id) external {
         Deal storage deal = deals[id];
         if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.contestMode) revert NotContest();
         if (deal.claimedAt != 0) revert AlreadyClaimed();
         if (deal.payee != address(0) || deal.assigned) revert NotClaimable();
         if (!deal.agentMode || deal.deadline == 0) revert NotClaimable();
@@ -266,6 +316,7 @@ contract BountyVault {
         Deal storage deal = deals[id];
         if (msg.sender != deal.payer) revert OnlyPayer();
         if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.contestMode) revert NotContest();
         if (deal.claimedAt != 0) revert AlreadyClaimed();
         if (deal.deadline != 0 && block.timestamp > deal.deadline) revert DeadlinePassed();
         if (payee == address(0)) revert ZeroAddress();
@@ -274,6 +325,79 @@ contract BountyVault {
         deal.payee = payee;
         deal.assigned = true;
         emit PayeeAssigned(id, payee);
+    }
+
+    // ────────────────────────── Contests ───────────────────────────
+
+    /// @notice Self-register as an entrant. Does not lock the prize or set a payee.
+    function enterContest(uint256 id) external {
+        _enter(id, msg.sender);
+    }
+
+    /// @notice Sponsor registers an entrant who submitted off-chain (no gas needed from them).
+    function registerEntrant(uint256 id, address entrant) external {
+        Deal storage deal = deals[id];
+        if (msg.sender != deal.payer) revert OnlyPayer();
+        _enter(id, entrant);
+    }
+
+    /**
+     * @notice The recorded arbitrator pays one or more registered entrants.
+     * @dev Amounts must sum to the escrow. Evidence must already be committed.
+     *      Status is terminal before any transfer so a failed share rolls back all.
+     */
+    function award(uint256 id, address[] calldata winners, uint128[] calldata amounts) external {
+        Deal storage deal = deals[id];
+        if (msg.sender != deal.arbitrator) revert OnlyArbitrator();
+        if (!deal.contestMode) revert NotContest();
+        if (deal.status != Status.Open) revert BountyNotOpen();
+        _requireLiveEvidence(id);
+
+        uint256 n = winners.length;
+        if (n == 0 || n != amounts.length) revert AmountMismatch();
+        if (n > MAX_CONTEST_WINNERS) revert TooManyWinners();
+
+        uint256 sum;
+        for (uint256 i; i < n; i++) {
+            address w = winners[i];
+            uint128 a = amounts[i];
+            if (w == address(0)) revert ZeroAddress();
+            if (a == 0) revert ZeroAmount();
+            if (w == deal.payer || w == deal.arbitrator) revert RoleConflict();
+            if (!contestEntered[id][w]) revert NotClaimable();
+            for (uint256 j; j < i; j++) {
+                if (winners[j] == w) revert AlreadyClaimed();
+            }
+            sum += a;
+        }
+        if (sum != deal.amount) revert AmountMismatch();
+
+        deal.status = Status.Released;
+        if (n == 1) {
+            deal.payee = winners[0];
+            deal.assigned = true;
+        }
+
+        for (uint256 i; i < n; i++) {
+            _pay(winners[i], amounts[i]);
+            emit ContestSharePaid(id, winners[i], amounts[i]);
+        }
+        emit ContestAwarded(id, n, deal.amount);
+        emit BountyReleased(id, n == 1 ? winners[0] : address(0), deal.amount);
+    }
+
+    function _enter(uint256 id, address entrant) private {
+        Deal storage deal = deals[id];
+        if (!deal.contestMode) revert NotContest();
+        if (deal.status != Status.Open) revert BountyNotOpen();
+        if (block.timestamp > deal.deadline) revert DeadlinePassed();
+        if (entrant == address(0)) revert ZeroAddress();
+        if (entrant == deal.payer || entrant == deal.arbitrator) revert RoleConflict();
+        if (contestEntered[id][entrant]) revert AlreadyEntered();
+
+        contestEntered[id][entrant] = true;
+        contestEntrants[id] += 1;
+        emit ContestEntered(id, entrant);
     }
 
     // ────────────────────────── Settlement ─────────────────────────
@@ -288,6 +412,7 @@ contract BountyVault {
         Deal storage deal = deals[id];
         if (msg.sender != deal.payer) revert OnlyPayer();
         if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.contestMode) revert NotContest();
         if (deal.payee == address(0)) revert PayeeNotSet();
         _requireLiveEvidence(id);
 
@@ -306,7 +431,7 @@ contract BountyVault {
         Deal storage deal = deals[id];
         if (msg.sender != deal.payer) revert OnlyPayer();
         if (deal.status != Status.Open) revert BountyNotOpen();
-        if (deal.payee == address(0)) revert PayeeNotSet();
+        if (deal.payee == address(0) && !deal.contestMode) revert PayeeNotSet();
         if (hash == bytes32(0)) revert ZeroAmount();
         if (expiresAt <= block.timestamp) revert EvidenceExpired();
         if (evidenceHash[id] != bytes32(0)) revert AlreadyCommitted();
@@ -325,6 +450,7 @@ contract BountyVault {
     function settleAfterChallenge(uint256 id) external {
         Deal storage deal = deals[id];
         if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.contestMode) revert NotContest();
         if (deal.payee == address(0)) revert PayeeNotSet();
         _requireLiveEvidence(id);
         if (block.timestamp < challengeUntil[id]) revert ChallengePending();
@@ -338,7 +464,8 @@ contract BountyVault {
     /// @notice True when an Open deal has a payee and unexpired committed evidence.
     function canSettle(uint256 id) public view returns (bool) {
         Deal storage deal = deals[id];
-        if (deal.status != Status.Open || deal.payee == address(0)) return false;
+        if (deal.status != Status.Open) return false;
+        if (deal.payee == address(0) && !deal.contestMode) return false;
         if (evidenceHash[id] == bytes32(0)) return false;
         if (block.timestamp >= evidenceExpiresAt[id]) return false;
         return true;

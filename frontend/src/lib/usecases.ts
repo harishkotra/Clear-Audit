@@ -3,9 +3,8 @@ import type { Role } from "./profile";
 /**
  * What people actually settle with this rail.
  *
- * The live v2 vault covers named payees, open claiming, deadlines, cancel and
- * refund. Multi-claimant contests still need a later contract, and are marked
- * `later` rather than sold as available.
+ * The live vault covers named payees, open claiming, contests with split
+ * awards, deadlines, cancel and refund.
  *
  * This is the single source of truth for the landing page, onboarding and the
  * workspace copy - so the product cannot drift from the pitch in one place and
@@ -115,8 +114,7 @@ export const USE_CASES: UseCase[] = [
       "A contest's judge is the arbitrator: they resolve to one winner, and the submission hash is the evidence both sides can re-check.",
     evidence: "Winning submission fingerprint",
     expiry: "The NDA / embargo window ends with the anchor",
-    fit: "later",
-    needs: "Needs multi-claimant payout: today one escrow pays exactly one fixed address.",
+    fit: "today",
     nouns: { deal: "contest prize", payer: "sponsor", payee: "contestant" },
     amountHint: "Prize pool, per winner",
     sides: {

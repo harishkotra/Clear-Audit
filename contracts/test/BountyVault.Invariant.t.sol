@@ -74,11 +74,11 @@ contract BountyVaultHandler is Test {
     }
 
     function _deadline(uint256 id) internal view returns (uint64 d) {
-        (,,,, d,,,,,,) = vault.deals(id);
+        (,,,, d,,,,,,,) = vault.deals(id);
     }
 
     function _claimedAt(uint256 id) internal view returns (uint64 c) {
-        (,,,,, c,,,,,) = vault.deals(id);
+        (,,,,, c,,,,,,) = vault.deals(id);
     }
 
     function _status(uint256 id) internal view returns (BountyVault.Status s) {

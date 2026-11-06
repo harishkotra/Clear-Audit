@@ -81,16 +81,16 @@ Company                    ClearAudit                     Researcher
 
 | Contract | Address |
 | --- | --- |
-| `BountyVault` v3 (live) | [`0x2334493e0EeD42b0E45fF8E64862dBDA50A41772`](https://explorer.testnet.arc.io/address/0x2334493e0EeD42b0E45fF8E64862dBDA50A41772) |
+| `BountyVault` v4 (live) | [`0x9D500710df8036e4BdF38Bf9A6CA7364Cd4e26C1`](https://explorer.testnet.arc.io/address/0x9D500710df8036e4BdF38Bf9A6CA7364Cd4e26C1) |
 | USDC (ERC-20 view) | `0x3600000000000000000000000000000000000000` |
 | Arbitrator | `0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2` |
 | Challenge window | 300 seconds |
 
-v3 deployment transaction:
-[`0x31a80755a47ccdeb1fd8a29337e8f14a08ea913c78989f7b6030ee4800723f7c`](https://explorer.testnet.arc.io/tx/0x31a80755a47ccdeb1fd8a29337e8f14a08ea913c78989f7b6030ee4800723f7c)
-(block 71035461, 1776686 gas). `release(id)` now requires `commitEvidence`. Anyone may `settleAfterChallenge` after 5 minutes.
+v4 deployment transaction:
+[`0xab6a72fd3d01761e46a07b71237af4c2d9c202805ab3bce321440165326e12f4`](https://explorer.testnet.arc.io/tx/0xab6a72fd3d01761e46a07b71237af4c2d9c202805ab3bce321440165326e12f4)
+(block 71038680). `release(id)` requires `commitEvidence`. Contests use `award` to split the prize. Anyone may `settleAfterChallenge` after 5 minutes on a single-payee deal.
 
-v2 (`0xf6aD45A5…Ca593`) and v1 (`0x2837…115e` + `USDCPaymaster`) remain on chain and readable. Sources: `contracts/legacy/BountyVaultV2.sol`, `contracts/legacy/BountyVaultV1.sol`.
+v3 (`0x2334…1772`), v2 (`0xf6aD45A5…Ca593`) and v1 remain on chain and readable.
 
 ## Proven on chain, not asserted
 
@@ -140,8 +140,8 @@ The ones a reviewer will find, stated first:
   place.
 - **Discovery is out of band.** A task exists on chain and is readable by any agent, but nothing
   tells an agent to look. Discovery is the open problem, not a solved one.
-- **One payee per task.** No partial releases, no milestone tranches, no multi-claimant contests on
-  the same escrow.
+- **One payee per named task.** Contests are the exception: `award` splits one escrow across
+  registered entrants. No partial releases on a named bounty, no milestone tranches inside one deal.
 - **`release(id)` requires committed evidence on v3.** A payer who skips `commitEvidence` reverts
   on chain. `/api/release-guard` and `/evidence` still re-check the Arkiv anchor. See
   [`docs/DEMO.md`](docs/DEMO.md).
@@ -161,7 +161,7 @@ Create `frontend/.env.local`:
 ```ini
 # public
 NEXT_PUBLIC_ARC_RPC_URL=https://rpc.testnet.arc.io
-NEXT_PUBLIC_VAULT_ADDRESS=0x2334493e0EeD42b0E45fF8E64862dBDA50A41772
+NEXT_PUBLIC_VAULT_ADDRESS=0x9D500710df8036e4BdF38Bf9A6CA7364Cd4e26C1
 NEXT_PUBLIC_PAYMASTER_ADDRESS=0x0000000000000000000000000000000000000000
 NEXT_PUBLIC_ARBITRATOR_ADDRESS=0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2
 NEXT_PUBLIC_USDC_ADDRESS=0x3600000000000000000000000000000000000000

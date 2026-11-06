@@ -8,6 +8,7 @@ import Onboarding from "@/components/Onboarding";
 import { Empty, SkeletonRows, Stat, StatusPill } from "@/components/ui";
 import { useProfile, ROLE_LABEL } from "@/lib/profile";
 import { useCaseById } from "@/lib/usecases";
+import { WORKSPACE, workspaceCriteriaHash } from "@/lib/workspace";
 import { useVault } from "@/hooks/useVault";
 import { money, shortAddress } from "@/lib/format";
 
@@ -92,6 +93,47 @@ export default function WorkspaceHome() {
           hint="Awaiting arbitration"
         />
         <Stat label="Workspace" value={ROLE_LABEL[profile.role]} hint={uc.label} />
+      </div>
+
+      <div className="mt-4 card p-5">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-[14px] font-medium text-white">Live situations on this vault</h2>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-zinc-500">
+              Real Arc deals, labelled by what they settle. Bug bounties are not the demo set.
+            </p>
+          </div>
+          <Link href="/app/rewards" className="btn btn-ghost h-8 text-[12px]">
+            Open deals
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {WORKSPACE.map((row) => {
+            const hash = workspaceCriteriaHash(row.criteria);
+            const deal = state.deals.find(
+              (d) => (d.criteriaHash ?? "").toLowerCase() === hash.toLowerCase(),
+            );
+            return (
+              <div key={row.useCase} className="border border-[var(--rule)] p-3.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[13px] text-white">{row.title}</div>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-500">
+                    {deal ? `#${deal.id}` : "not seeded"}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-500">{row.story}</p>
+                {deal && (
+                  <div className="mt-2 flex items-center justify-between text-[11.5px] text-zinc-400">
+                    <span>{money(deal.amount, state.token.decimals)}</span>
+                    <Link href={`/evidence?dealId=${deal.id}`} className="hover:text-zinc-200">
+                      Re-run the gate ↗
+                    </Link>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">

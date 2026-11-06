@@ -180,6 +180,27 @@ export function useEscrow() {
     [address, approveAndFund, requireWallet],
   );
 
+  /** Escrow a contest prize. The arbitrator later awards shares to registered entrants. */
+  const openContest = useCallback(
+    async (amountUsdc: string, deadline: number, criteriaHash: `0x${string}` = NO_CRITERIA) => {
+      if (!deadline || deadline <= Math.floor(Date.now() / 1000)) {
+        throw new Error("A contest needs a deadline in the future.");
+      }
+      const w = requireWallet("open a contest");
+      return approveAndFund("open a contest", amountUsdc, (amount) =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "createContest",
+          args: [amount, BigInt(deadline), criteriaHash],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [approveAndFund, requireWallet],
+  );
+
   /** Open work to any agent. A deadline is mandatory: it is the refund path. */
   const openTask = useCallback(
     async (amountUsdc: string, deadline: number, criteriaHash: `0x${string}` = NO_CRITERIA) => {
@@ -372,11 +393,71 @@ export function useEscrow() {
     [requireWallet, run],
   );
 
+  const enterContest = useCallback(
+    async (dealId: string) => {
+      const w = requireWallet("enter this contest");
+      return run("contest entry", () =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "enterContest",
+          args: [BigInt(dealId)],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [requireWallet, run],
+  );
+
+  const registerEntrant = useCallback(
+    async (dealId: string, entrant: `0x${string}`) => {
+      if (!isAddress(entrant)) throw new Error("Enter a valid entrant address.");
+      const w = requireWallet("register an entrant");
+      return run("entrant registration", () =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "registerEntrant",
+          args: [BigInt(dealId), entrant],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [requireWallet, run],
+  );
+
+  /** Arbitrator only. Pays registered entrants; amounts must sum to the escrow. */
+  const awardContest = useCallback(
+    async (dealId: string, winners: `0x${string}`[], amounts: bigint[]) => {
+      if (winners.length === 0 || winners.length !== amounts.length) {
+        throw new Error("Each winner needs an amount, and they must sum to the prize.");
+      }
+      const w = requireWallet("award this contest");
+      return run("contest award", () =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "award",
+          args: [BigInt(dealId), winners, amounts],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [requireWallet, run],
+  );
+
   return {
     fundReward,
     openTask,
+    openContest,
     releaseReward,
     claimTask,
+    enterContest,
+    registerEntrant,
+    awardContest,
     refundTask,
     cancelTask,
     disputeReward,

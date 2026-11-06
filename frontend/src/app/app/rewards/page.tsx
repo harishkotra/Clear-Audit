@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { isAddress, keccak256, toBytes } from "viem";
+import { isAddress, keccak256, parseUnits, toBytes } from "viem";
 import { useAccount } from "wagmi";
 import AppShell from "@/components/AppShell";
 import { Empty, ExplorerLink, Notice, SkeletonRows, StatusPill } from "@/components/ui";
@@ -25,8 +25,12 @@ export default function RewardsPage() {
   const {
     fundReward,
     openTask,
+    openContest,
     releaseReward,
     claimTask,
+    enterContest,
+    registerEntrant,
+    awardContest,
     refundTask,
     cancelTask,
     disputeReward,
@@ -41,7 +45,12 @@ export default function RewardsPage() {
 
   const [researcher, setResearcher] = useState("");
   const [amount, setAmount] = useState("");
-  const [mode, setMode] = useState<"named" | "open">("named");
+  const [mode, setMode] = useState<"named" | "open" | "contest">("named");
+  const [entrant, setEntrant] = useState("");
+  const [awardA, setAwardA] = useState("");
+  const [awardB, setAwardB] = useState("");
+  const [awardAmtA, setAwardAmtA] = useState("");
+  const [awardAmtB, setAwardAmtB] = useState("");
   const [deadlineDays, setDeadlineDays] = useState("");
   const [criteria, setCriteria] = useState("");
   const [funding, setFunding] = useState(false);
@@ -74,6 +83,11 @@ export default function RewardsPage() {
     [state.deals],
   );
 
+  const contestBoard = useMemo(
+    () => state.deals.filter((d) => d.contestMode && d.status === 1),
+    [state.deals],
+  );
+
   const isArbitrator = Boolean(address && address.toLowerCase() === ARBITRATOR_ADDRESS.toLowerCase());
   const evidenceGate = Boolean(state.features?.evidenceGate);
 
@@ -92,8 +106,8 @@ export default function RewardsPage() {
       setNotice({ tone: "error", text: "Enter a valid payee wallet address." });
       return;
     }
-    if (mode === "open" && !(Number(deadlineDays) > 0)) {
-      setNotice({ tone: "error", text: "An open task needs a deadline so the money can come back." });
+    if ((mode === "open" || mode === "contest") && !(Number(deadlineDays) > 0)) {
+      setNotice({ tone: "error", text: "This kind of deal needs a deadline so the money can come back." });
       return;
     }
 
@@ -106,14 +120,18 @@ export default function RewardsPage() {
       const { hash, dealId } =
         mode === "named"
           ? await fundReward(researcher as `0x${string}`, amount, { criteriaHash, deadline })
-          : await openTask(amount, deadline, criteriaHash);
+          : mode === "contest"
+            ? await openContest(amount, deadline, criteriaHash)
+            : await openTask(amount, deadline, criteriaHash);
 
       setNotice({
         tone: "success",
         text:
           mode === "named"
             ? `Reward #${dealId} funded. The named payee is the only wallet this vault can pay.`
-            : `Task #${dealId} is open. Any agent can claim it, and whoever claims is the only wallet it can pay.`,
+            : mode === "contest"
+              ? `Contest #${dealId} is open. Register entrants, then the judge awards shares.`
+              : `Task #${dealId} is open. Any agent can claim it, and whoever claims is the only wallet it can pay.`,
         href: hash,
       });
       setResearcher("");
@@ -250,6 +268,72 @@ export default function RewardsPage() {
     }
   }
 
+  async function onEnter(dealId: string) {
+    setNotice(null);
+    setReleasing(dealId);
+    try {
+      const { hash } = await enterContest(dealId);
+      setNotice({ tone: "success", text: `Entered contest #${dealId}. The judge can now award you a share.`, href: hash });
+      await refresh();
+    } catch (e: unknown) {
+      setNotice({ tone: "error", text: e instanceof Error ? e.message : "Entry failed." });
+    } finally {
+      setReleasing(null);
+    }
+  }
+
+  async function onRegister(dealId: string) {
+    if (!isAddress(entrant)) {
+      setNotice({ tone: "error", text: "Enter a valid entrant address." });
+      return;
+    }
+    setNotice(null);
+    setReleasing(dealId);
+    try {
+      const { hash } = await registerEntrant(dealId, entrant as `0x${string}`);
+      setNotice({ tone: "success", text: `Registered ${shortAddress(entrant)} on contest #${dealId}.`, href: hash });
+      setEntrant("");
+      await refresh();
+    } catch (e: unknown) {
+      setNotice({ tone: "error", text: e instanceof Error ? e.message : "Registration failed." });
+    } finally {
+      setReleasing(null);
+    }
+  }
+
+  async function onAward(dealId: string, pool: string) {
+    const winners: `0x${string}`[] = [];
+    const amounts: bigint[] = [];
+    if (isAddress(awardA) && Number(awardAmtA) > 0) {
+      winners.push(awardA as `0x${string}`);
+      amounts.push(parseUnits(awardAmtA, decimals));
+    }
+    if (isAddress(awardB) && Number(awardAmtB) > 0) {
+      winners.push(awardB as `0x${string}`);
+      amounts.push(parseUnits(awardAmtB, decimals));
+    }
+    if (winners.length === 0) {
+      setNotice({ tone: "error", text: "Name at least one winner and amount." });
+      return;
+    }
+    const sum = amounts.reduce((a, b) => a + b, 0n);
+    if (sum !== BigInt(pool)) {
+      setNotice({ tone: "error", text: "Winner amounts must add up to the prize exactly." });
+      return;
+    }
+    setNotice(null);
+    setReleasing(dealId);
+    try {
+      const { hash } = await awardContest(dealId, winners, amounts);
+      setNotice({ tone: "success", text: `Contest #${dealId} awarded.`, href: hash });
+      await refresh();
+    } catch (e: unknown) {
+      setNotice({ tone: "error", text: e instanceof Error ? e.message : "Award failed." });
+    } finally {
+      setReleasing(null);
+    }
+  }
+
   async function onSettle(dealId: string) {
     setNotice(null);
     setReleasing(dealId);
@@ -356,6 +440,75 @@ export default function RewardsPage() {
         </div>
       )}
 
+      {contestBoard.length > 0 && (
+        <div className="mb-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[13px] uppercase tracking-[0.1em] text-zinc-500">Open contests</h2>
+            <span className="text-[12px] text-zinc-600">{contestBoard.length} live</span>
+          </div>
+          {contestBoard.map((d) => (
+            <div key={d.id} className="card space-y-3 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-[15px] font-medium text-white">{money(d.amount, decimals)} prize</div>
+                  <div className="text-[11.5px] text-zinc-500">
+                    #{d.id} · {shortAddress(d.payer)}
+                    {d.deadline > 0 && now ? ` · ${timeLeft(String(d.deadline), now)}` : ""}
+                    {d.evidence?.hash ? " · evidence committed" : " · waiting for evidence"}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {!isCompany && (
+                    <button
+                      className="btn btn-mint h-8 px-3 text-[12px]"
+                      disabled={releasing === d.id || isPending}
+                      onClick={() => onEnter(d.id)}
+                    >
+                      {releasing === d.id ? "Entering…" : "Enter"}
+                    </button>
+                  )}
+                  {isCompany && d.payer.toLowerCase() === address?.toLowerCase() && (
+                    <button
+                      className="btn btn-ghost h-8 px-3 text-[12px]"
+                      disabled={releasing === d.id || isPending || !isAddress(entrant)}
+                      onClick={() => onRegister(d.id)}
+                    >
+                      Register entrant
+                    </button>
+                  )}
+                  {isArbitrator && (
+                    <button
+                      className="btn btn-primary h-8 px-3 text-[12px]"
+                      disabled={releasing === d.id || isPending}
+                      onClick={() => onAward(d.id, d.amount)}
+                    >
+                      Award
+                    </button>
+                  )}
+                </div>
+              </div>
+              {isCompany && d.payer.toLowerCase() === address?.toLowerCase() && (
+                <input
+                  className="field font-mono text-[12px]"
+                  placeholder="Entrant 0x…"
+                  value={entrant}
+                  onChange={(e) => setEntrant(e.target.value.trim())}
+                  spellCheck={false}
+                />
+              )}
+              {isArbitrator && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input className="field font-mono text-[12px]" placeholder="Winner A 0x…" value={awardA} onChange={(e) => setAwardA(e.target.value.trim())} spellCheck={false} />
+                  <input className="field tabular-nums text-[12px]" placeholder="Amount A" value={awardAmtA} onChange={(e) => setAwardAmtA(e.target.value.replace(/[^0-9.]/g, ""))} />
+                  <input className="field font-mono text-[12px]" placeholder="Winner B 0x… (optional)" value={awardB} onChange={(e) => setAwardB(e.target.value.trim())} spellCheck={false} />
+                  <input className="field tabular-nums text-[12px]" placeholder="Amount B" value={awardAmtB} onChange={(e) => setAwardAmtB(e.target.value.replace(/[^0-9.]/g, ""))} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {isCompany && (
         <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
           <form id="fund" onSubmit={onFund} className="card h-fit p-5">
@@ -365,13 +518,13 @@ export default function RewardsPage() {
             </p>
 
             <div className="mt-4 flex gap-1 rounded-[2px] border border-[var(--rule)] p-1">
-              {(["named", "open"] as const).map((m) => (
+              {(["named", "open", "contest"] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => {
                     setMode(m);
-                    if (m === "open" && !deadlineDays) setDeadlineDays("7");
+                    if ((m === "open" || m === "contest") && !deadlineDays) setDeadlineDays("7");
                   }}
                   className={`flex-1 rounded-[2px] px-2 py-1.5 text-[11.5px] transition-colors ${
                     mode === m
@@ -379,7 +532,7 @@ export default function RewardsPage() {
                       : "text-zinc-400 hover:text-zinc-200"
                   }`}
                 >
-                  {m === "named" ? "Name the payee" : "Open to any agent"}
+                  {m === "named" ? "Name the payee" : m === "open" ? "Open to any agent" : "Contest"}
                 </button>
               ))}
             </div>
@@ -400,20 +553,20 @@ export default function RewardsPage() {
               )}
               <div>
                 <label className="label" htmlFor="deadline">
-                  {mode === "open" ? "Claim deadline (days)" : "Deadline (days, optional)"}
+                  {mode === "named" ? "Deadline (days, optional)" : "Deadline (days)"}
                 </label>
                 <input
                   id="deadline"
                   className="field tabular-nums"
                   inputMode="numeric"
-                  placeholder={mode === "open" ? "7" : "0"}
+                  placeholder={mode === "named" ? "0" : "7"}
                   value={deadlineDays}
                   onChange={(e) => setDeadlineDays(e.target.value.replace(/[^0-9]/g, ""))}
                 />
                 <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-600">
-                  {mode === "open"
-                    ? "After this, anyone can refund the escrow to the payer. A task with no deadline could be held open forever, so the vault refuses one."
-                    : "If set, anyone can refund the escrow after this window. Leave 0 for no expiry."}
+                  {mode === "named"
+                    ? "If set, anyone can refund the escrow after this window. Leave 0 for no expiry."
+                    : "After this, anyone can refund the escrow to the payer. The vault refuses a contest or open task with no deadline."}
                 </p>
               </div>
               <div>
@@ -453,7 +606,9 @@ export default function RewardsPage() {
                 ? "Confirm in your wallet…"
                 : mode === "named"
                   ? `Fund ${noun}`
-                  : `Open ${noun} to agents`}
+                  : mode === "contest"
+                    ? `Escrow the prize`
+                    : `Open ${noun} to agents`}
             </button>
             <p className="mt-3 text-[11px] leading-relaxed text-zinc-600">
               Requires an approval and one deposit transaction. The vault holds the funds, not
@@ -466,9 +621,8 @@ export default function RewardsPage() {
                 <span className="chip text-[#8bd17c]">live on v2</span>
               </div>
               <p className="mt-2 text-[11.5px] leading-relaxed text-zinc-500">
-                Open to any agent instead of one named {uc.nouns.payee}. Whoever claims first is the
-                only wallet the vault can pay, and the deadline keeps the escrow from being held
-                open forever.
+                Name one payee, leave it open for any agent, or run a contest. A contest lets the
+                judge split the prize across registered entrants in one transaction.
               </p>
             </div>
           </form>

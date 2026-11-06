@@ -19,9 +19,9 @@
       },
       "deploymentTool": "forge script (Arc Studio quota exhausted)",
       "sourceOfTruth": "deployments.arc.json",
-      "deploymentTx": "0x31a80755a47ccdeb1fd8a29337e8f14a08ea913c78989f7b6030ee4800723f7c",
+      "deploymentTx": "0xab6a72fd3d01761e46a07b71237af4c2d9c202805ab3bce321440165326e12f4",
       "contracts": {
-        "BountyVault": "0x2334493e0EeD42b0E45fF8E64862dBDA50A41772",
+        "BountyVault": "0x9D500710df8036e4BdF38Bf9A6CA7364Cd4e26C1",
         "USDC": "0x3600000000000000000000000000000000000000",
         "paymaster": "0x0000000000000000000000000000000000000000"
       },
@@ -30,6 +30,7 @@
         "admin": "0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2"
       },
       "superseded": {
+        "BountyVaultV3": "0x2334493e0EeD42b0E45fF8E64862dBDA50A41772",
         "BountyVaultV2": "0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593",
         "BountyVaultV2tx": "0x167899b66fbdaf259770a12e18d6f525c6ec1a01c109c8d1c9de38b03a263e5d",
         "ClearAuditDeployer": "0x8fcC1436147BF48eCF57C0B4609B5380E7b5756a",

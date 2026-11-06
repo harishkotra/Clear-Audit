@@ -112,6 +112,13 @@ async function main() {
     check(`${fn} is present`, present, "agent dispatch path");
   }
 
+  for (const fn of ["createContest", "enterContest", "registerEntrant", "award"]) {
+    const present = vaultAbi.some(
+      (e: { type: string; name?: string }) => e.type === "function" && e.name === fn,
+    );
+    check(`${fn} is present`, present, "contest path");
+  }
+
   const commitPresent = vaultAbi.some(
     (e: { type: string; name?: string }) => e.type === "function" && e.name === "commitEvidence",
   );

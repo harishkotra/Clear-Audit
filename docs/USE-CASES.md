@@ -14,15 +14,14 @@ page, onboarding and the workspace copy).
 | 2 | **CVD / PSIRT disclosure payouts** - a programme pays a reporter it cannot KYC in time | accepted report fingerprint | the legal retention window, mapped onto the anchor | works |
 | 3 | **Retainer milestones** - a security firm paid per deliverable | artefact hash (report, patch review, threat model) | the engagement's confidentiality window | works |
 | 4 | **Agent dispatch** - a lister leaves the payee open so any agent can claim the task | artefact hash written by the claiming agent | the task record ends with the anchor | works (`createOpenTask` / `claimTask`) |
-| 5 | **Contest judgement** - a named judge resolves a prize | winning submission fingerprint | the NDA / embargo window | **later** — multi-claimant |
+| 5 | **Contest judgement** - a named judge resolves a prize | winning submission fingerprint | the NDA / embargo window | works (`createContest` / `award`) |
 | 6 | **Bug bounty payout** - the familiar case, and the most crowded lane | accepted finding fingerprint | a fixed bug stops being a permanent indexed target | works |
 
-## What still needs a later vault
+## What the live vault covers
 
-The live v3 vault has deadlines, `cancel`, `refundExpired`, open claiming, one-argument `release`,
-and `commitEvidence`.
-
-- Contests (#5) still need multi-claimant payouts. Today one escrow pays exactly one address.
+Deadlines, `cancel`, `refundExpired`, open claiming, one-argument `release`, `commitEvidence`,
+and contests: `createContest`, `enterContest` / `registerEntrant`, and `award` which splits the
+escrow across registered entrants in one transaction.
 
 ## Why bounties are not the headline
 
@@ -33,7 +32,7 @@ card of six, last, and labelled as crowded.
 
 ## Where the app exposes this
 
-- `/` - six situations, with the contract gap on contest judgement (multi-claimant).
+- `/` - six situations, all live on the deployed vault.
 - `/evidence` - public re-run of the Arkiv gate for any deal id. No wallet.
 - `/app` onboarding - pick a situation, then a side; the profile stores it in `localStorage`.
 - `/app`, `/app/rewards`, `/app/settings` - nouns and guidance follow the selected situation

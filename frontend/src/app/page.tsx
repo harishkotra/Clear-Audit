@@ -247,7 +247,7 @@ export default function Landing() {
             </div>
             <p className="max-w-[44ch] text-[13.5px] leading-[1.7] text-[#8d887f]">
               Anywhere money is owed against a deliverable and neither side wants to be identified.
-              Two of them need a contract change, and they say so.
+              All six run on the vault that is live on Arc Testnet.
             </p>
           </div>
 
@@ -293,7 +293,7 @@ export default function Landing() {
             </table>
           </div>
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.1em] text-[#4d4943]">
-            live = works with the deployed vault &nbsp;·&nbsp; later = needs a contract change
+            live = works with the deployed vault
           </p>
         </div>
       </section>

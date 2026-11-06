@@ -63,7 +63,7 @@ contract BountyVaultTest is BountyVaultTestBase {
         assertEq(uint8(s), uint8(BountyVault.Status.Open));
         assertEq(usdc.balanceOf(address(vault)), AMT);
         assertEq(usdc.balanceOf(payer), FUNDS - AMT);
-        (,, address tok, uint128 amt, uint64 d, uint64 ca,, bool agent, bool assigned, address arb, bytes32 crit) =
+        (,, address tok, uint128 amt, uint64 d, uint64 ca,, bool agent, bool assigned, address arb, bytes32 crit,) =
             vault.deals(id);
         assertEq(tok, address(usdc));
         assertEq(amt, AMT);
@@ -77,7 +77,7 @@ contract BountyVaultTest is BountyVaultTestBase {
 
     function test_CreateBounty_DeadlineZeroIsAllowed() public {
         uint256 id = _bountyFull(payee, AMT, 0);
-        (,,,, uint64 d,,,,,,) = vault.deals(id);
+        (,,,, uint64 d,,,,,,,) = vault.deals(id);
         assertEq(d, 0);
         assertEq(uint8(_status(id)), uint8(BountyVault.Status.Open));
     }
@@ -112,7 +112,7 @@ contract BountyVaultTest is BountyVaultTestBase {
         assertEq(w, address(0));
         assertEq(a, AMT);
         assertEq(uint8(s), uint8(BountyVault.Status.Open));
-        (,,,, uint64 d, uint64 ca,, bool agent, bool assigned, address arb, bytes32 crit) = vault.deals(id);
+        (,,,, uint64 d, uint64 ca,, bool agent, bool assigned, address arb, bytes32 crit,) = vault.deals(id);
         assertEq(d, t0 + DAY);
         assertEq(ca, 0);
         assertTrue(agent);
@@ -155,7 +155,7 @@ contract BountyVaultTest is BountyVaultTestBase {
         vm.prank(payer);
         vault.assignPayee(id, claimer);
         assertEq(_payeeOf(id), claimer);
-        (,,,,,,,, bool assigned,,) = vault.deals(id);
+        (,,,,,,,, bool assigned,,,) = vault.deals(id);
         assertTrue(assigned);
         assertEq(_claimedAt(id), 0);
     }

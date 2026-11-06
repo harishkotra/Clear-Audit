@@ -16,6 +16,7 @@ export type VaultDeal = {
   agentMode: boolean;
   assigned?: boolean;
   criteriaHash?: `0x${string}`;
+  contestMode?: boolean;
   evidence?: { hash: `0x${string}`; expiresAt: number; challengeUntil: number } | null;
 };
 

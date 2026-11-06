@@ -27,6 +27,8 @@ export type Deal = {
   agentMode: boolean;
   assigned: boolean;
   criteriaHash: `0x${string}`;
+  /** True when many addresses may enter and the arbitrator awards shares. */
+  contestMode: boolean;
 };
 
 /** The chain is the only source of truth for who may be paid. */
@@ -43,7 +45,22 @@ export async function readDeal(id: bigint | string): Promise<Deal> {
       abi: BOUNTY_VAULT_V2_ABI,
       functionName: "deals",
       args: [BigInt(id)],
-    }) as Promise<readonly [`0x${string}`, `0x${string}`, `0x${string}`, bigint, bigint, bigint, number, boolean, boolean, `0x${string}`, `0x${string}`]>,
+    }) as Promise<
+      readonly [
+        `0x${string}`,
+        `0x${string}`,
+        `0x${string}`,
+        bigint,
+        bigint,
+        bigint,
+        number,
+        boolean,
+        boolean,
+        `0x${string}`,
+        `0x${string}`,
+        boolean,
+      ]
+    >,
   ]);
 
   return {
@@ -57,6 +74,7 @@ export async function readDeal(id: bigint | string): Promise<Deal> {
     agentMode: row[7],
     assigned: row[8],
     criteriaHash: row[10],
+    contestMode: Boolean(row[11]),
   };
 }
 
