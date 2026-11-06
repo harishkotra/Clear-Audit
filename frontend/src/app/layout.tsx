@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
+import MascotCompanion from "@/components/MascotCompanion";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -37,7 +38,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${mono.variable} ${serif.variable}`}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <MascotCompanion />
+        </Providers>
       </body>
     </html>
   );
