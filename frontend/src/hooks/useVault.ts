@@ -4,11 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 
 export type VaultDeal = {
   id: string;
-  company: `0x${string}`;
-  researcher: `0x${string}`;
+  payer: `0x${string}`;
+  payee: `0x${string}`;
   amount: string;
   status: number;
   statusLabel: string;
+  /** Unix seconds; 0 means no deadline was set. */
+  deadline: number;
+  /** Unix seconds when an agent claimed an open task; 0 otherwise. */
+  claimedAt: number;
+  agentMode: boolean;
 };
 
 export type VaultState = {

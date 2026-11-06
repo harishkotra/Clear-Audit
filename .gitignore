@@ -42,3 +42,6 @@ coverage/
 /lib/
 /.gitmodules
 /foundry.lock
+
+# local Arc Studio sandbox mirror (contains its own .env, never committed)
+clearaudit_smart_contract_refactor_4xiwhz/

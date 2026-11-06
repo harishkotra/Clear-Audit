@@ -2,8 +2,9 @@
 /**
  * Generates frontend/src/lib/abi.ts from the committed ABIs in abi/.
  *
- * The ABI files are the source of truth. abi/BountyVault.json is exported from
- * the Arc Studio workspace after a deploy:
+ * The ABI files are the source of truth. abi/BountyVaultV2.json is produced from
+ * the compiled contract (forge inspect) after a deploy; abi/BountyVault.json is
+ * the v1 devnet copy kept for the EF prototype on chain 1337.
  *
  *   npx arc-studio cat contracts/out/BountyVault.sol/BountyVault.json \
  *     --session clearaudit | node -e "
@@ -34,10 +35,27 @@ function load(file) {
 }
 
 const vault = load("BountyVault.json");
+const vaultV2 = load("BountyVaultV2.json");
 const erc20 = load("ERC20.json");
 
 for (const required of ["createBounty", "releaseBounty", "disputeBounty", "getDeal", "nextDealId"]) {
-  if (!vault.names.has(required)) throw new Error(`BountyVault ABI is missing ${required}()`);
+  if (!vault.names.has(required)) throw new Error(`BountyVault v1 ABI is missing ${required}()`);
+}
+for (const required of [
+  "createBounty",
+  "createOpenTask",
+  "claimTask",
+  "assignPayee",
+  "release",
+  "dispute",
+  "resolveDispute",
+  "refundExpired",
+  "cancel",
+  "getDeal",
+  "deals",
+  "nextDealId",
+]) {
+  if (!vaultV2.names.has(required)) throw new Error(`BountyVault v2 ABI is missing ${required}()`);
 }
 for (const required of ["balanceOf", "allowance", "approve", "decimals"]) {
   if (!erc20.names.has(required)) throw new Error(`ERC20 ABI is missing ${required}()`);
@@ -49,7 +67,29 @@ const out = [
   "",
   `export const BOUNTY_VAULT_ABI = ${JSON.stringify(vault.abi, null, 2)} as const;`,
   "",
+  "// v2 vault, deployed on Arc Testnet. release() takes no recipient argument, so no",
+  "// caller can redirect escrow. The paymaster path is gone with the fee.",
+  `export const BOUNTY_VAULT_V2_ABI = ${JSON.stringify(vaultV2.abi, null, 2)} as const;`,
+  "",
   `export const ERC20_ABI = ${JSON.stringify(erc20.abi, null, 2)} as const;`,
+  "",
+  "export const DEAL_STATUS_V2 = {",
+  "  None: 0,",
+  "  Open: 1,",
+  "  Disputed: 2,",
+  "  Released: 3,",
+  "  ResolvedToPayee: 4,",
+  "  ResolvedToPayer: 5,",
+  "} as const;",
+  "",
+  "export const DEAL_STATUS_V2_LABEL: Record<number, string> = {",
+  '  0: "None",',
+  '  1: "Open",',
+  '  2: "Disputed",',
+  '  3: "Released",',
+  '  4: "Resolved to payee",',
+  '  5: "Resolved to payer",',
+  "};",
   "",
   "export const DEAL_STATUS = {",
   "  None: 0,",
@@ -74,4 +114,6 @@ const out = [
 ];
 
 writeFileSync(target, out.join("\n"));
-console.log(`wrote ${target} (${vault.abi.length} vault entries, ${erc20.abi.length} erc20 entries)`);
+console.log(
+  `wrote ${target} (v1 ${vault.abi.length} entries, v2 ${vaultV2.abi.length} entries, erc20 ${erc20.abi.length})`,
+);

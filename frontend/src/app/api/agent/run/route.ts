@@ -75,11 +75,11 @@ export async function POST(req: Request) {
   if (deal.status !== DEAL_STATUS.Open) {
     return NextResponse.json({ error: `Deal #${dealId} is not open.` }, { status: 409 });
   }
-  if (deal.researcher.toLowerCase() !== cfg.operator?.toLowerCase()) {
+  if (deal.payee.toLowerCase() !== cfg.operator?.toLowerCase()) {
     return NextResponse.json(
       {
         error: "OPERATOR_NOT_PAYEE",
-        reason: `Deal #${dealId} pays ${deal.researcher}, not the operator. Fund the task with ${cfg.operator} as the payee to use the operator agent.`,
+        reason: `Deal #${dealId} pays ${deal.payee}, not the operator. Fund the task with ${cfg.operator} as the payee to use the operator agent.`,
       },
       { status: 403 },
     );
@@ -114,8 +114,8 @@ export async function POST(req: Request) {
     anchor = await createReport({
       chainId: ARC_CHAIN_ID,
       dealId: BigInt(dealId),
-      protocolWallet: deal.company,
-      whitehatWallet: deal.researcher,
+      protocolWallet: deal.payer,
+      whitehatWallet: deal.payee,
       amount: deal.amount,
       encryptedPayloadHash: hash,
       severity: "operator",

@@ -52,7 +52,7 @@ Bug bounty platforms are the most trusted route for disclosing a vulnerability, 
 around 10% of the payout and require identity verification before a researcher sees a cent. Small
 security teams can't justify that overhead, so they run informal disclosure over email and pay late.
 
-ClearAudit is the escrow and the receipt. The company keeps control of approval; the chain keeps
+ClearAudit is the escrow and the receipt. The payer keeps control of approval; the chain keeps
 control of the money.
 
 ## How it works
@@ -66,12 +66,14 @@ Company                    ClearAudit                     Researcher
    │                            │─────────────────────────────►│ paid in USDC
 ```
 
-1. **Fund.** The company names a researcher wallet and locks the amount in the vault. The recipient
-   is fixed at funding time, so the money can't be redirected later.
+1. **Fund.** The payer names a payee and locks the amount in the vault, or opens the task to any
+   agent with a deadline. The payee is fixed at funding (or claim) time, so the money cannot be
+   redirected later.
 2. **Report.** The researcher writes the finding in the browser. If they choose a passphrase, it is
    encrypted with AES-GCM locally; only a SHA-256 fingerprint and a severity are anchored, with a
    30-day expiry.
-3. **Release.** The company approves and one transaction pays the researcher.
+3. **Release.** The payer approves and one transaction pays the payee. `release(id)` names no
+   recipient, so there is nothing to get wrong at payout time.
 4. **Dispute.** Either side can freeze a reward. An immutable arbitrator resolves it to exactly one
    party. There is no upgrade key and no admin withdrawal path.
 
@@ -79,50 +81,71 @@ Company                    ClearAudit                     Researcher
 
 | Contract | Address |
 | --- | --- |
-| `BountyVault` | [`0x283776AB6c2B139d6097285821AC5EdDe43e115e`](https://explorer.testnet.arc.io/address/0x283776AB6c2B139d6097285821AC5EdDe43e115e) |
-| `USDCPaymaster` | [`0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B`](https://explorer.testnet.arc.io/address/0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B) |
-| `ClearAuditDeployer` | [`0x8fcC1436147BF48eCF57C0B4609B5380E7b5756a`](https://explorer.testnet.arc.io/address/0x8fcC1436147BF48eCF57C0B4609B5380E7b5756a) |
+| `BountyVault` v2 (live) | [`0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593`](https://explorer.testnet.arc.io/address/0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593) |
 | USDC (ERC-20 view) | `0x3600000000000000000000000000000000000000` |
-| ERC-4337 EntryPoint v0.7 | `0x0000000071727De22E5E9d8BAf0edAc6f37da032` |
+| Arbitrator | `0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2` |
 
-Deployment transaction:
-[`0x201d71d90b110fb3d321f3b86591ab07096b646986632bf044082e1cca12b145`](https://explorer.testnet.arc.io/tx/0x201d71d90b110fb3d321f3b86591ab07096b646986632bf044082e1cca12b145)
+v2 deployment transaction:
+[`0x167899b66fbdaf259770a12e18d6f525c6ec1a01c109c8d1c9de38b03a263e5d`](https://explorer.testnet.arc.io/tx/0x167899b66fbdaf259770a12e18d6f525c6ec1a01c109c8d1c9de38b03a263e5d)
+(block 71028686, 1410742 gas)
 
-Wiring is re-read over public RPC by `npm run verify:chain` - the vault's token is the native USDC
-ERC-20 interface, the paymaster points at the vault and uses EntryPoint **v0.7**
-(`PackedUserOperation`), and the paymaster owner is the deployer contract. Full record in
-[`deployments.json`](deployments.json).
+v2 adds what the first contract could not express: an **open task** that any agent can claim, a
+**claim deadline**, a **refund after expiry**, and `release(id)`, which takes **no recipient and no
+amount**. The payee is fixed on chain at funding time, so no caller can redirect the escrow.
 
-> **What the paymaster actually does, stated plainly:** `USDCPaymaster` is deployed, wired and
-> verified on Arc, but **no product flow routes a `UserOperation` through it**. The company signs
-> `releaseBounty` directly (it pays the USDC gas itself), and the researcher never transacts at all,
-> so a researcher needs no gas token without any sponsorship involved. The sponsored-settlement path
+The v1 pair (`ClearAuditDeployer` `0x8fcC…756a`, `BountyVault` `0x2837…115e`, `USDCPaymaster`
+`0xEFFD…ba2B`, deploy tx `0x201d71…b145`) is still on chain and still readable. It is superseded,
+not deleted, and its source is kept at `contracts/legacy/BountyVaultV1.sol` so the first deployment
+stays reviewable.
+
+## Proven on chain, not asserted
+
+| Step | Evidence |
+| --- | --- |
+| Fund #0 (5 USDC, named payee) | tx `0xa5a6b0d2…8daf6` |
+| Anchor the delivered artefact | Arkiv entity `0x6035259a…7ef`, tx `0x6137b6c0…ce57`, 30-day expiry |
+| Gate accepts it | `POST /api/release-guard` returns `ok: true` with the anchor key |
+| Pay | tx `0x39711950…1347`, block 71029339, 93123 gas, status Released, payee 0 → 5 USDC |
+| Gate refuses without an anchor | deal #1 has no anchor, `/api/release-guard` returns 403 and no payment is made |
+
+`npm run verify:chain` re-reads all of this from the chain and exits non-zero on any mismatch (18
+checks). Full record in [`deployments.arc.json`](deployments.arc.json).
+
+The checks are read-only and need no keys: chain id, code presence, the deployment receipt and its
+block, `token()`, `arbitrator()`, `paymaster() == 0`, the shape of `release` in the ABI, the presence
+of `createOpenTask`/`claimTask`/`refundExpired`/`cancel`/`assignPayee`, and the state of deal #0.
+
+> **What the paymaster actually does, stated plainly:** the v1 `USDCPaymaster` is deployed, wired and
+> verified on Arc, but **no product flow routes a `UserOperation` through it**, and v2 has no fee path
+> for one to sponsor: `release` moved the whole amount to the payee, so the vault takes nothing and
+> needs no paymaster at all (`paymaster() == 0`). The payer signs `release` directly and pays the USDC
+> gas itself, and the payee never transacts, so a payee needs no gas token without any sponsorship. The sponsored-settlement path
 > is the EF devnet artifact (`/app/gasless`), where a frame transaction pays the fee from the protocol
 > relayer's account. That devnet's current revision accepts only one `VERIFY` frame and will not let a
 > contract paymaster be the payer, so the deployed `SponsorPaymaster` is unused there too - see
 > [`docs/EIP8141.md`](docs/EIP8141.md). We are not claiming 4337 sponsorship on Arc.
 
-> **Arbitrator custody, stated plainly:** the immutable arbitrator is the Arc Studio deploy wallet
-> (`0x5B12…Ef42`), shared by every Arc Studio project. Its key is not held by this repository. A
-> disputed bounty therefore needs that wallet to act; nothing else can resolve it. This is a
-> property of the current deployment, and [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) explains how a
-> fresh deploy can set a project-held arbitrator.
+> **Arbitrator custody, stated plainly:** the immutable arbitrator in the live v2 vault is the
+> project wallet `0x65B5…0ed2`, which this repository can operate through `.env.local`. The first
+> deployment used the shared Arc Studio wallet (`0x5B12…Ef42`), whose key is not in this repo, which
+> is why the second deployment moved the role to a wallet we control. A disputed deal therefore needs
+> that key to resolve; nothing else can.
 
 ## Known limitations
 
 The ones a reviewer will find, stated first:
 
-- **An open bounty cannot be cancelled.** `BountyVault` has no `cancelBounty`: funds leave an open
-  bounty only through `releaseBounty`, or through `disputeBounty` → `resolveDispute(false)`. That is
-  acceptable for a demo where the company controls approval, and it is the first thing to fix before
-  the vault holds real money - see [`docs/POSITIONING.md`](docs/POSITIONING.md).
-- **The arbitrator is the Arc Studio deploy wallet** (paragraph above): a dispute needs that wallet.
+- **A claimed task cannot be cancelled by the payer.** Once a payee claims an open task, the payer's
+  only routes are `dispute` -> arbitrator, or waiting for the deadline and calling `refundExpired`.
+  That is the price of not letting the payer yank work out from under an agent mid-delivery, and it
+  is worth stating before the vault holds real money - see [`docs/POSITIONING.md`](docs/POSITIONING.md).
+- **Arbitration needs the arbitrator key** (paragraph above): a disputed deal waits for that wallet.
 - **No upgrade path and no admin withdrawal**: deliberate, but it means a bug is not patchable in
   place.
-- **The mailbox is read-only.** A researcher learns that a bounty exists by being told; there is no
-  open-application flow.
-- **Single-payee bounties only.** No partial releases, no milestone tranches, no multi-claimant
-  contests.
+- **Discovery is out of band.** A task exists on chain and is readable by any agent, but nothing
+  tells an agent to look. Discovery is the open problem, not a solved one.
+- **One payee per task.** No partial releases, no milestone tranches, no multi-claimant contests on
+  the same escrow.
 
 ## Run it
 
@@ -139,15 +162,22 @@ Create `frontend/.env.local`:
 ```ini
 # public
 NEXT_PUBLIC_ARC_RPC_URL=https://rpc.testnet.arc.io
-NEXT_PUBLIC_VAULT_ADDRESS=0x283776AB6c2B139d6097285821AC5EdDe43e115e
-NEXT_PUBLIC_PAYMASTER_ADDRESS=0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B
+NEXT_PUBLIC_VAULT_ADDRESS=0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593
+NEXT_PUBLIC_PAYMASTER_ADDRESS=0x0000000000000000000000000000000000000000
+NEXT_PUBLIC_ARBITRATOR_ADDRESS=0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2
 NEXT_PUBLIC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
 
 # server only - never prefix these with NEXT_PUBLIC_
 ARKIV_PRIVATE_KEY=
 ARKIV_ACCESS_KEY=
-PROTOCOL_PRIVATE_KEY=
 REQUIRE_ARKIV_ANCHOR=true
+
+# operator agent (optional, see docs/AGENT-DISPATCH.md)
+AGENT_API_BASE_URL=https://api.particle.ai/v1
+AGENT_MODEL=deepseek-v41-flash-1017
+AGENT_API_KEY=
+AGENT_MAX_TOKENS=1600
+OPERATOR_ADDRESS=
 ```
 
 `ARKIV_ACCESS_KEY` is free at <https://hub.arkiv.network/access-keys>. Without it the SDK still
@@ -159,14 +189,15 @@ works but falls back to the public endpoint, which is heavily rate limited.
   signs for a user.
 - **The chain is the source of truth.** Every balance, status and recipient in the UI is read from
   `BountyVault` through `/api/state`. There is no seeded or demo data in the app.
-- **Recipient is immutable per reward.** `createBounty` records the researcher. `releaseBounty`
-  cannot pay anyone else.
+- **Recipient is immutable per reward.** `createBounty` records the payee, and `createOpenTask`
+  records whoever calls `claimTask` first. `release(id)` takes no recipient at all, so no caller can
+  pay anyone else.
 - **No double payment.** Status transitions are enforced on-chain; a released reward cannot be
   released or disputed again.
 - **Fail-closed anchoring on the payout path.** `POST /api/release-guard` is called before the
-  wallet is asked to sign `releaseBounty`, and the UI disables the button when no live anchor
-  exists. The guard re-reads the deal from Arc and requires the anchor's researcher, company and
-  amount to match the chain. The same policy gates `/api/claim` on the EF devnet.
+  wallet is asked to sign `release`, and the UI disables the button when no live anchor exists. The
+  guard re-reads the deal from Arc and requires the anchor's payee, payer and amount to match the
+  chain. The same policy gates `/api/claim` on the EF devnet.
 - **Rate-limited.** `/api/claim` is throttled to 5 requests/minute per IP, and `/api/reports`
   refuses to replace an existing live anchor in place.
 
@@ -223,7 +254,7 @@ changing it. Without it the site still renders and `/app` says the wallet layer 
 ## Arkiv
 
 Arkiv is not a log. `POST /api/release-guard` and `POST /api/claim` both refuse to settle unless a
-live, chain-scoped Arkiv entity matches the on-chain deal's researcher, company and amount. Delete
+live, chain-scoped Arkiv entity matches the on-chain deal's payee, payer and amount. Delete
 Arkiv and the vault becomes a pay-anyone faucet, which is why the guard is fail-closed rather than
 defensive-in-depth.
 
@@ -261,7 +292,7 @@ EIP-8141 artifact were built during the event. What we added at the event, speci
 | Contracts | `ClearAuditDeployer`, `BountyVault`, `USDCPaymaster`, Foundry test suite, Arc Studio deployment and `npm run verify:chain` |
 | Arkiv | Schema design, writer path, chain-scoped anchors, fail-closed release guard, read-only query script |
 | EF track | Frame-transaction builder, alt-mempool devnet deployment, unfunded-researcher release, reproducible claim script |
-| Frontend | Marketing site, company/researcher flows, gasless demo page, honest 0%-fee pricing |
+| Frontend | Marketing site, payer/payee flows, open-agent claiming, gasless demo page, honest pricing |
 
 ### How we used AI
 

@@ -3,7 +3,7 @@
   "chainId": 1337,
   "rpcUrl": "https://altmempool.forshtat.com/rpc",
   "readRpc": "https://altmempool.forshtat.com",
-  "role": "research artifact for the Ethereum Foundation track \u2014 not a bridge, not Arc settlement",
+  "role": "research artifact for the Ethereum Foundation track - not a bridge, not Arc settlement",
   "deployedVia": "Arc Studio sandbox (session clearaudit, app 3505cc60-6a37-442c-8b75-9a4d516007c1)",
   "deployedAt": "2026-11-06",
   "relayer": "0x5544596212F91984C986A919C8026DF0576816f9",
@@ -36,12 +36,12 @@
     ]
   },
   "rebuild": {
-    "where": "inside the Arc Studio sandbox only \u2014 the local contracts/ copy is a pulled mirror",
+    "where": "inside the Arc Studio sandbox only - the local contracts/ copy is a pulled mirror",
     "command": "forge script contracts/script/DeployDevnet.s.sol:DeployDevnet --rpc-url https://altmempool.forshtat.com/rpc --broadcast --legacy --skip-simulation --slow --private-key $PROTOCOL_PRIVATE_KEY",
     "whySkipSimulation": "the devnet charges roughly 5x more gas for deployed code than Foundry's local EVM schedule assumes. With simulation enabled Foundry sends its own (too small) gas limit and every creation reverts with gasUsed == gasLimit, which looks like a constructor revert and is not one.",
     "afterRebuild": [
       "update frontend/src/lib/constants.ts (DEVNET_VAULT_ADDRESS, DEVNET_PAYMASTER_ADDRESS)",
-      "update frontend/.env.local NEXT_PUBLIC_DEVNET_* , then rebuild \u2014 NEXT_PUBLIC_* is inlined at build time",
+      "update frontend/.env.local NEXT_PUBLIC_DEVNET_* , then rebuild - NEXT_PUBLIC_* is inlined at build time",
       "replace this file's addresses, txs and verified block"
     ]
   },
@@ -49,7 +49,7 @@
   "deals": {
     "0": "opened and settled: 1 000 mUSDC escrowed at creation, released to the researcher through the EIP-8141 frame transaction below",
     "1": "opened and settled on 2026-11-06 (500 mUSDC released by the user's own test)",
-    "2": "open, 250 mUSDC, anchored \u2014 the live demo deal"
+    "2": "open, 250 mUSDC, anchored - the live demo deal"
   },
   "setupTxs": {
     "mint": "0xcf03ebeb926199694f21a6f352f906bc1056a911302c847ee031f92b7549a350",
@@ -65,8 +65,8 @@
       "type": "0x6 (frame transaction)",
       "gasUsed": 158995,
       "frames": [
-        "0: VERIFY scope=EXECUTION_AND_PAYMENT target=null \u2014 status 0x1, gasUsed 0x64",
-        "1: SENDER target=BountyVault releaseBounty(0,0,0xBEEF\u2026) \u2014 status 0x1, gasUsed 0xd7e5"
+        "0: VERIFY scope=EXECUTION_AND_PAYMENT target=null - status 0x1, gasUsed 0x64",
+        "1: SENDER target=BountyVault releaseBounty(0,0,0xBEEF\u2026) - status 0x1, gasUsed 0xd7e5"
       ],
       "result": "deals(0).status = 3 (Released); researcher mUSDC balance 0 -> 1 000e6; the researcher signed nothing and holds no gas"
     }

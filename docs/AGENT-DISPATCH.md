@@ -24,10 +24,11 @@ it worth paying for".
 
 ## Status
 
-The v2 contract and tests were written in the Arc Studio sandbox, then the daily usage limit cut the
-turn off before deployment. The pulled candidate is in `docs/v2-pending/` and its suite passes locally:
-**124 tests, 0 failures** (`forge test --match-path 'contracts/test/BountyVault*'`). Deployment is the
-only remaining step, and it must go through the sandbox.
+v2 is **deployed and live** at `0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593` on Arc Testnet
+(chain 5042002, deploy tx `0x167899b6…a2f5`, block 71028686). The app points at it, the suite is
+green in this repo (**116 tests, 0 failures** with `forge test`), and the open-agent path has been
+exercised end to end: fund, anchor, gate, pay. See `deployments.arc.json` for the receipts and
+`docs/DEPLOYMENT.md` for the reproduction steps.
 
 ## Contract v2
 

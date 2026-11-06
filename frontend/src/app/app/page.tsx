@@ -27,7 +27,7 @@ export default function WorkspaceHome() {
     if (!address) return [];
     const me = address.toLowerCase();
     return state.deals.filter((d) =>
-      (isCompany ? d.company : d.researcher).toLowerCase() === me,
+      (isCompany ? d.payer : d.payee).toLowerCase() === me,
     );
   }, [state.deals, address, isCompany]);
 
@@ -205,8 +205,8 @@ export default function WorkspaceHome() {
                 {state.deals.slice(0, 6).map((d) => (
                   <tr key={d.id}>
                     <td className="font-mono text-zinc-400">#{d.id}</td>
-                    <td className="font-mono text-[12px] text-zinc-400">{shortAddress(d.company)}</td>
-                    <td className="font-mono text-[12px] text-zinc-400">{shortAddress(d.researcher)}</td>
+                    <td className="font-mono text-[12px] text-zinc-400">{shortAddress(d.payer)}</td>
+                    <td className="font-mono text-[12px] text-zinc-400">{shortAddress(d.payee)}</td>
                     <td className="tabular-nums text-zinc-200">
                       {money(d.amount, state.token.decimals)}
                     </td>

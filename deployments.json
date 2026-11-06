@@ -84,11 +84,11 @@
         }
       ],
       "notes": [
-        "Deal #0 is Open with 1 000 mUSDC escrowed \u2014 the gasless demo has something to settle.",
+        "Deal #0 is Open with 1 000 mUSDC escrowed - the gasless demo has something to settle.",
         "SponsorPaymaster is explicitly demo-only: it sponsors any caller while funded.",
         "Rebuild command and the gas trap that cost us three reverted creations: deployments.devnet.json."
       ],
-      "status": "live \u2014 deployed through Arc Studio on 2026-11-06 and verified by independent eth_call (see deployments.devnet.json)",
+      "status": "live - deployed through Arc Studio on 2026-11-06 and verified by independent eth_call (see deployments.devnet.json)",
       "referenceTransactionsNote": "The pre-reset stack (BountyVault 0x8460\u2026b347) is recorded in docs/EIP8141.md; the shared devnet was reset and those hashes no longer resolve.",
       "arbitrator": "0x4E9dE2B8d17CC142A615573be3aC7901CBc1787a",
       "researcher": "0xBEEF00000000000000000000000000000000BEEf"

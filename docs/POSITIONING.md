@@ -14,10 +14,11 @@ Strip the bounty language and `BountyVault` is one thing:
 
 Contract facts that define the shape (see `contracts/BountyVault.sol`):
 
-- one payee, fixed at funding time, and it cannot be redirected (`WhitehatMismatch`);
+- one payee per task, fixed at funding time or at the first `claimTask`, and it cannot be redirected
+  (`release` takes no recipient);
 - one amount, no partial releases, no milestones;
-- **no deadline and no cancel**: an open bounty's funds move only via `releaseBounty`, or
-  `disputeBounty` → `resolveDispute(false)` back to the funder;
+- **a deadline on open tasks**: past it, anyone may `refundExpired` the escrow back to the payer.
+  A claimed task that is not released still waits for the deadline or for the arbitrator;
 - release requires the funder (or the paymaster branch), so the payee can never self-release;
 - roles are constrained at creation (`RoleConflict`): funder ≠ payee ≠ arbitrator;
 - no upgrade key, no admin withdrawal, no fee on the deployed deployment.

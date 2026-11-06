@@ -2,14 +2,9 @@
 
 import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
-import { decodeEventLog, isAddress, parseUnits, zeroAddress } from "viem";
-import {
-  ARC_CHAIN_ID,
-  BOUNTY_VAULT_ABI,
-  ERC20_ABI,
-  USDC_ADDRESS,
-  VAULT_ADDRESS,
-} from "@/lib/constants";
+import { decodeEventLog, isAddress, parseUnits } from "viem";
+import { BOUNTY_VAULT_V2_ABI } from "@/lib/abi";
+import { ARC_CHAIN_ID, ERC20_ABI, USDC_ADDRESS, VAULT_ADDRESS } from "@/lib/constants";
 
 type Tx = `0x${string}`;
 
@@ -21,10 +16,23 @@ function humanError(e: unknown) {
   );
 }
 
+/** Zero hash means "no acceptance criteria recorded". The gate reads it as unset. */
+export const NO_CRITERIA = `0x${"00".repeat(32)}` as `0x${string}`;
+
+export type FundOptions = {
+  /** Unix seconds. 0 is allowed for a deal with a named payee. */
+  deadline?: number;
+  /** keccak256 of the acceptance criteria text, or zero for none. */
+  criteriaHash?: `0x${string}`;
+};
+
 /**
- * Write paths against the vault. The chain is the source of truth: decimals
+ * Write paths against the v2 vault. The chain is the source of truth: decimals
  * come from the token, allowances are reused, and the new id is read from the
  * BountyCreated event rather than assumed.
+ *
+ * release() takes no recipient argument, so nothing in this file can redirect
+ * escrow: the payee is fixed on chain at funding time.
  */
 export function useEscrow() {
   const { address } = useAccount();
@@ -35,23 +43,48 @@ export function useEscrow() {
 
   const ready = Boolean(address && publicClient && walletClient);
 
-  const fundReward = useCallback(
-    async (researcher: `0x${string}`, amountUsdc: string) => {
+  const requireWallet = useCallback(
+    (action: string) => {
       if (!ready || !address || !publicClient || !walletClient) {
         throw new Error("Connect your wallet first.");
       }
       if (walletClient.chain?.id !== ARC_CHAIN_ID) {
-        throw new Error("Switch your wallet to Arc Testnet to fund a reward.");
+        throw new Error(`Switch your wallet to Arc Testnet to ${action}.`);
       }
-      if (!isAddress(researcher)) throw new Error("Enter a valid researcher wallet address.");
-      if (researcher.toLowerCase() === address.toLowerCase()) {
-        throw new Error("You cannot name your own wallet as the researcher.");
-      }
+      return { address, publicClient, walletClient };
+    },
+    [address, publicClient, ready, walletClient],
+  );
 
+  const run = useCallback(
+    async (label: string, send: () => Promise<Tx>) => {
       setIsPending(true);
       setError(null);
       try {
-        const decimals = (await publicClient.readContract({
+        const hash = await send();
+        const client = publicClient;
+        if (!client) throw new Error("Connect your wallet first.");
+        const receipt = await client.waitForTransactionReceipt({ hash });
+        if (receipt.status !== "success") throw new Error(`The ${label} was reverted.`);
+        return { hash, receipt };
+      } catch (e: unknown) {
+        setError(humanError(e));
+        throw e;
+      } finally {
+        setIsPending(false);
+      }
+    },
+    [publicClient],
+  );
+
+  /** Approve the vault for the exact amount, then run the funding call. */
+  const approveAndFund = useCallback(
+    async (label: string, amountUsdc: string, fund: (amount: bigint) => Promise<Tx>) => {
+      const w = requireWallet(label);
+      setIsPending(true);
+      setError(null);
+      try {
+        const decimals = (await w.publicClient.readContract({
           address: USDC_ADDRESS,
           abi: ERC20_ABI,
           functionName: "decimals",
@@ -60,11 +93,11 @@ export function useEscrow() {
         const amount = parseUnits(amountUsdc, decimals);
         if (amount <= 0n) throw new Error("Amount must be greater than zero.");
 
-        const balance = (await publicClient.readContract({
+        const balance = (await w.publicClient.readContract({
           address: USDC_ADDRESS,
           abi: ERC20_ABI,
           functionName: "balanceOf",
-          args: [address],
+          args: [w.address],
         })) as bigint;
         if (balance < amount) {
           throw new Error(
@@ -72,54 +105,47 @@ export function useEscrow() {
           );
         }
 
-        const allowance = (await publicClient.readContract({
+        const allowance = (await w.publicClient.readContract({
           address: USDC_ADDRESS,
           abi: ERC20_ABI,
           functionName: "allowance",
-          args: [address, VAULT_ADDRESS],
+          args: [w.address, VAULT_ADDRESS],
         })) as bigint;
 
         let approveHash: Tx | undefined;
         if (allowance < amount) {
-          approveHash = await walletClient.writeContract({
+          approveHash = await w.walletClient.writeContract({
             address: USDC_ADDRESS,
             abi: ERC20_ABI,
             functionName: "approve",
             args: [VAULT_ADDRESS, amount],
-            account: address,
-            chain: walletClient.chain,
+            account: w.address,
+            chain: w.walletClient.chain,
           });
-          const approval = await publicClient.waitForTransactionReceipt({ hash: approveHash });
+          const approval = await w.publicClient.waitForTransactionReceipt({ hash: approveHash });
           if (approval.status !== "success") throw new Error("Approval was reverted.");
         }
 
-        const hash = await walletClient.writeContract({
-          address: VAULT_ADDRESS,
-          abi: BOUNTY_VAULT_ABI,
-          functionName: "createBounty",
-          args: [researcher, amount],
-          account: address,
-          chain: walletClient.chain,
-        });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        const hash = await fund(amount);
+        const receipt = await w.publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success") throw new Error("Funding was reverted.");
 
         let dealId: bigint | undefined;
         for (const log of receipt.logs) {
           try {
             const decoded = decodeEventLog({
-              abi: BOUNTY_VAULT_ABI,
+              abi: BOUNTY_VAULT_V2_ABI,
               eventName: "BountyCreated",
               data: log.data,
               topics: log.topics,
             });
-            dealId = decoded.args.dealId as bigint;
+            dealId = decoded.args.id as bigint;
             break;
           } catch {
             /* not the event we want */
           }
         }
-        if (dealId === undefined) throw new Error("Reward was created but the event was missing.");
+        if (dealId === undefined) throw new Error("The deal was created but the event was missing.");
 
         return { approveHash, hash, dealId };
       } catch (e: unknown) {
@@ -129,22 +155,60 @@ export function useEscrow() {
         setIsPending(false);
       }
     },
-    [address, publicClient, ready, walletClient],
+    [requireWallet],
+  );
+
+  /** Fund one named payee. No one else can ever be paid. */
+  const fundReward = useCallback(
+    async (payee: `0x${string}`, amountUsdc: string, opts: FundOptions = {}) => {
+      if (!isAddress(payee)) throw new Error("Enter a valid payee wallet address.");
+      if (address && payee.toLowerCase() === address.toLowerCase()) {
+        throw new Error("You cannot name your own wallet as the payee.");
+      }
+      const w = requireWallet("fund a deal");
+      return approveAndFund("fund a deal", amountUsdc, (amount) =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "createBounty",
+          args: [payee, amount, BigInt(opts.deadline ?? 0), opts.criteriaHash ?? NO_CRITERIA],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [address, approveAndFund, requireWallet],
+  );
+
+  /** Open work to any agent. A deadline is mandatory: it is the refund path. */
+  const openTask = useCallback(
+    async (amountUsdc: string, deadline: number, criteriaHash: `0x${string}` = NO_CRITERIA) => {
+      if (!deadline || deadline <= Math.floor(Date.now() / 1000)) {
+        throw new Error("An open task needs a deadline in the future.");
+      }
+      const w = requireWallet("open a task");
+      return approveAndFund("open a task", amountUsdc, (amount) =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "createOpenTask",
+          args: [amount, BigInt(deadline), criteriaHash],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [approveAndFund, requireWallet],
   );
 
   const releaseReward = useCallback(
     async (dealId: string) => {
-      if (!ready || !address || !publicClient || !walletClient) {
-        throw new Error("Connect your wallet first.");
-      }
-      if (walletClient.chain?.id !== ARC_CHAIN_ID) {
-        throw new Error("Switch your wallet to Arc Testnet to release a payment.");
-      }
+      const w = requireWallet("release a payment");
       setIsPending(true);
       setError(null);
       try {
-        // Arkiv is load-bearing: the server refuses to help settle a bounty
-        // whose evidence is missing, expired, or describes another beneficiary.
+        // Arkiv is load-bearing: the server refuses to help settle a deal whose
+        // evidence is missing, expired, or describes another beneficiary.
         const guardRes = await fetch("/api/release-guard", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -157,15 +221,15 @@ export function useEscrow() {
           );
         }
 
-        const hash = await walletClient.writeContract({
+        const hash = await w.walletClient.writeContract({
           address: VAULT_ADDRESS,
-          abi: BOUNTY_VAULT_ABI,
-          functionName: "releaseBounty",
-          args: [BigInt(dealId), 0n, zeroAddress],
-          account: address,
-          chain: walletClient.chain,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "release",
+          args: [BigInt(dealId)],
+          account: w.address,
+          chain: w.walletClient.chain,
         });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        const receipt = await w.publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success") throw new Error("The payment was reverted.");
         return { hash };
       } catch (e: unknown) {
@@ -175,40 +239,89 @@ export function useEscrow() {
         setIsPending(false);
       }
     },
-    [address, publicClient, ready, walletClient],
+    [requireWallet],
+  );
+
+  const claimTask = useCallback(
+    async (dealId: string) => {
+      const w = requireWallet("claim this task");
+      return run("claim", () =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "claimTask",
+          args: [BigInt(dealId)],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [requireWallet, run],
   );
 
   const disputeReward = useCallback(
     async (dealId: string) => {
-      if (!ready || !address || !publicClient || !walletClient) {
-        throw new Error("Connect your wallet first.");
-      }
-      if (walletClient.chain?.id !== ARC_CHAIN_ID) {
-        throw new Error("Switch your wallet to Arc Testnet first.");
-      }
-      setIsPending(true);
-      setError(null);
-      try {
-        const hash = await walletClient.writeContract({
+      const w = requireWallet("open a dispute");
+      return run("dispute", () =>
+        w.walletClient.writeContract({
           address: VAULT_ADDRESS,
-          abi: BOUNTY_VAULT_ABI,
-          functionName: "disputeBounty",
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "dispute",
           args: [BigInt(dealId)],
-          account: address,
-          chain: walletClient.chain,
-        });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        if (receipt.status !== "success") throw new Error("The dispute was reverted.");
-        return { hash };
-      } catch (e: unknown) {
-        setError(humanError(e));
-        throw e;
-      } finally {
-        setIsPending(false);
-      }
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
     },
-    [address, publicClient, ready, walletClient],
+    [requireWallet, run],
   );
 
-  return { fundReward, releaseReward, disputeReward, isPending, error, address, ready };
+  /** Past the deadline, an unclaimed or unaccepted task can be refunded by anyone. */
+  const refundTask = useCallback(
+    async (dealId: string) => {
+      const w = requireWallet("refund this task");
+      return run("refund", () =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "refundExpired",
+          args: [BigInt(dealId)],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [requireWallet, run],
+  );
+
+  const cancelTask = useCallback(
+    async (dealId: string) => {
+      const w = requireWallet("cancel this task");
+      return run("cancellation", () =>
+        w.walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "cancel",
+          args: [BigInt(dealId)],
+          account: w.address,
+          chain: w.walletClient.chain,
+        }),
+      );
+    },
+    [requireWallet, run],
+  );
+
+  return {
+    fundReward,
+    openTask,
+    releaseReward,
+    claimTask,
+    refundTask,
+    cancelTask,
+    disputeReward,
+    isPending,
+    error,
+    address,
+    ready,
+  };
 }

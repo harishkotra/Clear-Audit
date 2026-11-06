@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * verify-deployment.ts - independent read-only verification of the Arc
- * deployment. It does not trust deployments.json; it checks the chain.
+ * deployment. It does not trust the JSON file, it checks the chain.
  *
  *   npm run verify:chain
  *
@@ -14,23 +14,21 @@ import { fileURLToPath } from "node:url";
 import { createPublicClient, defineChain, getAddress, http } from "viem";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const dep = JSON.parse(readFileSync(resolve(root, "deployments.json"), "utf8"));
-const arcCfg = dep.chains.arcTestnet as {
-  chainId: number;
-  rpc: string;
-  deploymentTx: `0x${string}`;
-  contracts: Record<string, `0x${string}`>;
-  roles: Record<string, `0x${string}`>;
+const dep = JSON.parse(readFileSync(resolve(root, "deployments.arc.json"), "utf8"));
+const vaultCfg = dep.contracts.BountyVault as {
+  address: `0x${string}`;
+  txHash: `0x${string}`;
+  block: number;
+  arbitrator: `0x${string}`;
 };
 
-const vaultAbi = JSON.parse(readFileSync(resolve(root, "abi/BountyVault.json"), "utf8")).abi;
-const paymasterAbi = JSON.parse(readFileSync(resolve(root, "abi/USDCPaymaster.json"), "utf8")).abi;
+const vaultAbi = JSON.parse(readFileSync(resolve(root, "abi/BountyVaultV2.json"), "utf8")).abi;
 
 const arc = defineChain({
-  id: arcCfg.chainId,
+  id: dep.chainId,
   name: "Arc Testnet",
   nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
-  rpcUrls: { default: { http: [process.env.ARC_RPC_URL ?? arcCfg.rpc] } },
+  rpcUrls: { default: { http: [process.env.ARC_RPC_URL ?? dep.rpcUrl] } },
 });
 
 const client = createPublicClient({ chain: arc, transport: http() });
@@ -42,51 +40,99 @@ function check(label: string, ok: boolean, detail: string) {
   if (!ok) failures += 1;
 }
 
-async function call(address: `0x${string}`, abi: readonly unknown[], fn: string) {
-  return client.readContract({ address, abi, functionName: fn } as never);
+async function call(fn: string, args: readonly unknown[] = []) {
+  return client.readContract({
+    address: vaultCfg.address,
+    abi: vaultAbi,
+    functionName: fn,
+    args,
+  } as never);
+}
+
+function releaseInputs() {
+  const fn = vaultAbi.find((e: { type: string; name?: string }) => e.type === "function" && e.name === "release");
+  return fn ? fn.inputs.length : -1;
 }
 
 async function main() {
-  const { ClearAuditDeployer, BountyVault, USDCPaymaster, USDC, EntryPoint } = arcCfg.contracts;
-
   const chainId = await client.getChainId();
-  check("RPC chain id", chainId === arcCfg.chainId, `expected ${arcCfg.chainId}, got ${chainId}`);
+  check("RPC chain id", chainId === dep.chainId, `expected ${dep.chainId}, got ${chainId}`);
 
-  for (const [name, address] of Object.entries({ ClearAuditDeployer, BountyVault, USDCPaymaster })) {
-    const code = await client.getCode({ address });
-    check(`${name} has code`, Boolean(code && code !== "0x"), address);
-  }
+  const code = await client.getCode({ address: vaultCfg.address });
+  check("BountyVault has code", Boolean(code && code !== "0x"), vaultCfg.address);
 
-  const receipt = await client.getTransactionReceipt({ hash: arcCfg.deploymentTx }).catch(() => null);
+  const receipt = await client
+    .getTransactionReceipt({ hash: vaultCfg.txHash })
+    .catch(() => null);
   if (receipt) {
-    check("deployment tx succeeded", receipt.status === "success", arcCfg.deploymentTx);
+    check("deployment tx succeeded", receipt.status === "success", vaultCfg.txHash);
+    check(
+      "deployment tx matches recorded block",
+      Number(receipt.blockNumber) === vaultCfg.block,
+      `block ${receipt.blockNumber}`,
+    );
+    check(
+      "deployment tx created the vault",
+      Boolean(receipt.contractAddress) &&
+        getAddress(receipt.contractAddress!) === getAddress(vaultCfg.address),
+      receipt.contractAddress ?? "no contract address",
+    );
   } else {
-    console.log(`SKIP  deployment tx receipt not served by this RPC - ${arcCfg.deploymentTx}`);
+    console.log(`SKIP  deployment tx receipt not served by this RPC - ${vaultCfg.txHash}`);
   }
 
-  const token = (await call(BountyVault, vaultAbi, "token")) as `0x${string}`;
-  check("vault.token == USDC", getAddress(token) === getAddress(USDC), token);
+  const token = (await call("token")) as `0x${string}`;
+  check("vault.token == USDC", getAddress(token) === getAddress(dep.settlementToken.address), token);
 
-  const paymaster = (await call(BountyVault, vaultAbi, "paymaster")) as `0x${string}`;
-  check("vault.paymaster == USDCPaymaster", getAddress(paymaster) === getAddress(USDCPaymaster), paymaster);
+  const arbitrator = (await call("arbitrator")) as `0x${string}`;
+  check(
+    "vault.arbitrator == configured arbitrator",
+    getAddress(arbitrator) === getAddress(vaultCfg.arbitrator),
+    arbitrator,
+  );
 
-  const arbitrator = (await call(BountyVault, vaultAbi, "arbitrator")) as `0x${string}`;
-  check("vault.arbitrator == configured role", getAddress(arbitrator) === getAddress(arcCfg.roles.arbitrator), arbitrator);
+  const paymaster = (await call("paymaster")) as `0x${string}`;
+  check(
+    "vault.paymaster == zero",
+    paymaster === "0x0000000000000000000000000000000000000000",
+    "v2 has no fee path, so it takes no paymaster",
+  );
 
-  const pmVault = (await call(USDCPaymaster, paymasterAbi, "vault")) as `0x${string}`;
-  check("paymaster.vault == BountyVault", getAddress(pmVault) === getAddress(BountyVault), pmVault);
+  // The contract cannot redirect escrow because release() has no recipient.
+  check("release(uint256) has exactly one argument", releaseInputs() === 1, `inputs = ${releaseInputs()}`);
+  const legacyRelease = vaultAbi.some(
+    (e: { type: string; name?: string }) => e.type === "function" && e.name === "releaseBounty",
+  );
+  check("no three-argument releaseBounty in the ABI", !legacyRelease, "the fee-taking path is gone");
 
-  const pmUsdc = (await call(USDCPaymaster, paymasterAbi, "usdc")) as `0x${string}`;
-  check("paymaster.usdc == USDC", getAddress(pmUsdc) === getAddress(USDC), pmUsdc);
+  for (const fn of ["createOpenTask", "claimTask", "refundExpired", "cancel", "assignPayee"]) {
+    const present = vaultAbi.some(
+      (e: { type: string; name?: string }) => e.type === "function" && e.name === fn,
+    );
+    check(`${fn} is present`, present, "agent dispatch path");
+  }
 
-  const entryPoint = (await call(USDCPaymaster, paymasterAbi, "entryPoint")) as `0x${string}`;
-  check("paymaster.entryPoint == EntryPoint", getAddress(entryPoint) === getAddress(EntryPoint), entryPoint);
-
-  const owner = (await call(USDCPaymaster, paymasterAbi, "owner")) as `0x${string}`;
-  check("paymaster.owner == ClearAuditDeployer", getAddress(owner) === getAddress(ClearAuditDeployer), owner);
-
-  const nextDealId = (await call(BountyVault, vaultAbi, "nextDealId")) as bigint;
+  const nextDealId = (await call("nextDealId")) as bigint;
   check("vault.nextDealId() readable", typeof nextDealId === "bigint", `nextDealId = ${nextDealId}`);
+
+  if (nextDealId > 0n) {
+    const [payer, payee, amount, status] = (await call("getDeal", [0n])) as readonly [
+      `0x${string}`,
+      `0x${string}`,
+      bigint,
+      number,
+    ];
+    check(
+      "deal #0 has a payee and an amount",
+      payee !== "0x0000000000000000000000000000000000000000" && amount > 0n,
+      `${payer} paid ${payee} ${amount}`,
+    );
+    check(
+      "deal #0 reached a terminal state",
+      status === 3 || status === 4 || status === 5,
+      `status ${status}`,
+    );
+  }
 
   console.log(`\n${failures === 0 ? "Deployment verified." : `${failures} check(s) failed.`}`);
   process.exit(failures === 0 ? 0 : 1);

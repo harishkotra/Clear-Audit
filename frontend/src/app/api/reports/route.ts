@@ -92,8 +92,8 @@ export async function POST(req: Request) {
 
     const deal = chainId === DEVNET_CHAIN_ID
       ? await readDevnetDeal(BigInt(dealId)).then((d) => ({
-          company: d.protocol,
-          researcher: d.whitehat,
+          payer: d.protocol,
+          payee: d.whitehat,
           amount: d.amount,
           status: d.status,
         }))
@@ -138,8 +138,8 @@ export async function POST(req: Request) {
     const result = await createReport({
       chainId,
       dealId: BigInt(dealId),
-      protocolWallet: deal.company,
-      whitehatWallet: deal.researcher,
+      protocolWallet: deal.payer,
+      whitehatWallet: deal.payee,
       amount: deal.amount,
       encryptedPayloadHash,
       severity,

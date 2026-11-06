@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DEAL_STATUS } from "@/lib/abi";
+import { DEAL_STATUS_V2 } from "@/lib/abi";
 import { readDeal } from "@/lib/arc";
 import { anchorExpirySeconds, findReport, unwrap } from "@/lib/arkiv";
 import { ARC_CHAIN_ID } from "@/lib/constants";
@@ -7,7 +7,7 @@ import { ARC_CHAIN_ID } from "@/lib/constants";
 /**
  * POST /api/release-guard - the Anchor is load-bearing.
  *
- * The UI calls this before asking the wallet to sign `releaseBounty`. A payout
+ * The UI calls this before asking the wallet to sign `release`. A payout
  * is only allowed when a live, unexpired Arkiv anchor exists for this Arc deal
  * and the anchor's recorded protocol / researcher / amount match the chain.
  *
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
     const dealId = BigInt(raw);
     const deal = await readDeal(dealId);
-    if (deal.status !== DEAL_STATUS.Open || deal.researcher === "0x0000000000000000000000000000000000000000") {
+    if (deal.status !== DEAL_STATUS_V2.Open || deal.payee === "0x0000000000000000000000000000000000000000") {
       return NextResponse.json(
         { ok: false, reason: `This reward is not open (status ${deal.status}).` },
         { status: 409 },
@@ -68,15 +68,15 @@ export async function POST(req: Request) {
     const anchoredProtocol = String(unwrap(report.protocolWallet) ?? "").toLowerCase();
     const anchoredAmount = String(unwrap(report.amount) ?? "");
 
-    if (anchoredWhitehat !== deal.researcher.toLowerCase()) {
+    if (anchoredWhitehat !== deal.payee.toLowerCase()) {
       return NextResponse.json(
-        { ok: false, reason: "The anchored researcher does not match the on-chain beneficiary." },
+        { ok: false, reason: "The anchored payee does not match the on-chain beneficiary." },
         { status: 403 },
       );
     }
-    if (anchoredProtocol !== deal.company.toLowerCase()) {
+    if (anchoredProtocol !== deal.payer.toLowerCase()) {
       return NextResponse.json(
-        { ok: false, reason: "The anchored company does not match the on-chain depositor." },
+        { ok: false, reason: "The anchored payer does not match the on-chain depositor." },
         { status: 403 },
       );
     }

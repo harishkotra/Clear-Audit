@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { isAddress } from "viem";
+import { isAddress, keccak256, toBytes } from "viem";
 import { useAccount } from "wagmi";
 import AppShell from "@/components/AppShell";
 import { Empty, ExplorerLink, Notice, SkeletonRows, StatusPill } from "@/components/ui";
@@ -20,13 +20,17 @@ export default function RewardsPage() {
   const { profile, hydrated } = useProfile();
   const { address } = useAccount();
   const { state, reports, loading, refresh } = useVault();
-  const { fundReward, releaseReward, disputeReward, isPending } = useEscrow();
+  const { fundReward, openTask, releaseReward, claimTask, refundTask, disputeReward, isPending } =
+    useEscrow();
   const now = useNow();
   const uc = useCaseById(profile?.useCase);
   const noun = uc.nouns.deal;
 
   const [researcher, setResearcher] = useState("");
   const [amount, setAmount] = useState("");
+  const [mode, setMode] = useState<"named" | "open">("named");
+  const [deadlineDays, setDeadlineDays] = useState("7");
+  const [criteria, setCriteria] = useState("");
   const [funding, setFunding] = useState(false);
   const [notice, setNotice] = useState<{ tone: "success" | "error" | "info"; text: string; href?: string } | null>(null);
 
@@ -44,7 +48,7 @@ export default function RewardsPage() {
     if (!address) return [];
     const me = address.toLowerCase();
     return state.deals.filter((d) =>
-      (isCompany ? d.company : d.researcher).toLowerCase() === me,
+      (isCompany ? d.payer : d.payee).toLowerCase() === me,
     );
   }, [state.deals, address, isCompany]);
 
@@ -53,25 +57,73 @@ export default function RewardsPage() {
   async function onFund(e: React.FormEvent) {
     e.preventDefault();
     setNotice(null);
-    if (!isAddress(researcher)) {
-      setNotice({ tone: "error", text: "Enter a valid researcher wallet address." });
+    const criteriaHash = criteria.trim() ? keccak256(toBytes(criteria.trim())) : undefined;
+
+    if (mode === "named" && !isAddress(researcher)) {
+      setNotice({ tone: "error", text: "Enter a valid payee wallet address." });
       return;
     }
+    if (mode === "open" && !(Number(deadlineDays) > 0)) {
+      setNotice({ tone: "error", text: "An open task needs a deadline so the money can come back." });
+      return;
+    }
+
     setFunding(true);
     try {
-      const { hash, dealId } = await fundReward(researcher, amount);
+      const deadline = Math.floor(Date.now() / 1000) + Math.round(Number(deadlineDays) * 86400);
+      const { hash, dealId } =
+        mode === "named"
+          ? await fundReward(researcher as `0x${string}`, amount, { criteriaHash })
+          : await openTask(amount, deadline, criteriaHash);
+
       setNotice({
         tone: "success",
-        text: `Reward #${dealId} funded. The researcher can now submit a finding.`,
+        text:
+          mode === "named"
+            ? `Reward #${dealId} funded. The named payee is the only wallet this vault can pay.`
+            : `Task #${dealId} is open. Any agent can claim it, and whoever claims is the only wallet it can pay.`,
         href: hash,
       });
       setResearcher("");
       setAmount("");
+      setCriteria("");
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Funding failed." });
     } finally {
       setFunding(false);
+    }
+  }
+
+  async function onClaim(dealId: string) {
+    setNotice(null);
+    setReleasing(dealId);
+    try {
+      const { hash } = await claimTask(dealId);
+      setNotice({
+        tone: "success",
+        text: `You claimed task #${dealId}. Deliver the work, anchor the hash, and the payer can release.`,
+        href: hash,
+      });
+      await refresh();
+    } catch (e: unknown) {
+      setNotice({ tone: "error", text: e instanceof Error ? e.message : "Claim failed." });
+    } finally {
+      setReleasing(null);
+    }
+  }
+
+  async function onRefund(dealId: string) {
+    setNotice(null);
+    setReleasing(dealId);
+    try {
+      const { hash } = await refundTask(dealId);
+      setNotice({ tone: "success", text: `Task #${dealId} expired and the escrow went back to the payer.`, href: hash });
+      await refresh();
+    } catch (e: unknown) {
+      setNotice({ tone: "error", text: e instanceof Error ? e.message : "Refund failed." });
+    } finally {
+      setReleasing(null);
     }
   }
 
@@ -207,7 +259,25 @@ export default function RewardsPage() {
               The amount is locked in the vault. You stay in control of when it is released.
             </p>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 flex gap-1 rounded-[2px] border border-[var(--rule)] p-1">
+              {(["named", "open"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`flex-1 rounded-[2px] px-2 py-1.5 text-[11.5px] transition-colors ${
+                    mode === m
+                      ? "bg-[#ece7dd] text-[#0b0b0c]"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  {m === "named" ? "Name the payee" : "Open to any agent"}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-3 space-y-3">
+              {mode === "named" && (
               <div>
                 <label className="label capitalize" htmlFor="researcher">{uc.nouns.payee} wallet</label>
                 <input
@@ -219,6 +289,24 @@ export default function RewardsPage() {
                   spellCheck={false}
                 />
               </div>
+              )}
+              {mode === "open" && (
+                <div>
+                  <label className="label" htmlFor="deadline">Claim deadline (days)</label>
+                  <input
+                    id="deadline"
+                    className="field tabular-nums"
+                    inputMode="numeric"
+                    placeholder="7"
+                    value={deadlineDays}
+                    onChange={(e) => setDeadlineDays(e.target.value.replace(/[^0-9]/g, ""))}
+                  />
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-600">
+                    After this, anyone can refund the escrow to the payer. A task with no deadline
+                    could be held open forever, so the vault refuses one.
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="label capitalize" htmlFor="amount">{noun} amount</label>
                 <div className="relative">
@@ -235,10 +323,28 @@ export default function RewardsPage() {
                   </span>
                 </div>
               </div>
+              <div>
+                <label className="label" htmlFor="criteria">Acceptance criteria (optional)</label>
+                <input
+                  id="criteria"
+                  className="field"
+                  placeholder="What the delivered artefact must show"
+                  value={criteria}
+                  onChange={(e) => setCriteria(e.target.value)}
+                />
+                <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-600">
+                  Stored as a hash on chain. It settles what was asked without putting the brief in
+                  the clear.
+                </p>
+              </div>
             </div>
 
             <button className="btn btn-primary mt-4 w-full" disabled={funding || isPending}>
-              {funding ? "Confirm in your wallet…" : `Fund ${noun}`}
+              {funding
+                ? "Confirm in your wallet…"
+                : mode === "named"
+                  ? `Fund ${noun}`
+                  : `Open ${noun} to agents`}
             </button>
             <p className="mt-3 text-[11px] leading-relaxed text-zinc-600">
               Requires an approval and one deposit transaction. The vault holds the funds, not
@@ -247,13 +353,13 @@ export default function RewardsPage() {
 
             <div className="mt-4 border-t border-[var(--rule)] pt-3">
               <div className="flex items-center justify-between">
-                <span className="micro">Open to agents</span>
-                <span className="chip text-[#c9a06a]">needs v2</span>
+                <span className="micro">Open claiming</span>
+                <span className="chip text-[#8bd17c]">live on v2</span>
               </div>
               <p className="mt-2 text-[11.5px] leading-relaxed text-zinc-500">
-                Let any agent claim this {noun} instead of naming one {uc.nouns.payee}. The gate
-                already checks the delivered artefact, but open claiming needs a deadline, a refund
-                path and claimTask, none of which the deployed vault has.
+                Open to any agent instead of one named {uc.nouns.payee}. Whoever claims first is the
+                only wallet the vault can pay, and the deadline keeps the escrow from being held
+                open forever.
               </p>
             </div>
           </form>
@@ -289,7 +395,7 @@ export default function RewardsPage() {
                       return (
                         <tr key={d.id}>
                           <td className="font-mono text-zinc-400">#{d.id}</td>
-                          <td className="font-mono text-[12px] text-zinc-400">{shortAddress(d.researcher)}</td>
+                          <td className="font-mono text-[12px] text-zinc-400">{shortAddress(d.payee)}</td>
                           <td className="tabular-nums text-zinc-200">{money(d.amount, decimals)}</td>
                           <td className="text-[12px] text-zinc-400">
                             {r ? (
@@ -305,7 +411,25 @@ export default function RewardsPage() {
                           </td>
                           <td><StatusPill status={d.status} /></td>
                           <td className="text-right">
-                            {d.status === 1 && (
+                            {d.status === 1 && d.agentMode && d.claimedAt === 0 && (
+                              <button
+                                onClick={() => onClaim(d.id)}
+                                disabled={releasing === d.id || isPending}
+                                className="btn btn-mint h-8 px-3 text-[12px]"
+                              >
+                                {releasing === d.id ? "Claiming…" : "Claim"}
+                              </button>
+                            )}
+                            {d.status === 1 && d.deadline > 0 && d.deadline * 1000 < now && (
+                              <button
+                                onClick={() => onRefund(d.id)}
+                                disabled={releasing === d.id || isPending}
+                                className="btn h-8 px-3 text-[12px] text-zinc-300"
+                              >
+                                {releasing === d.id ? "Refunding…" : "Refund expired"}
+                              </button>
+                            )}
+                            {d.status === 1 && !d.agentMode && (
                               <button
                                 onClick={() => onRelease(d.id)}
                                 disabled={!r || releasing === d.id || isPending}
@@ -331,7 +455,7 @@ export default function RewardsPage() {
             <AgentDispatch
               deals={mine.map((d) => ({
                 id: d.id,
-                researcher: d.researcher,
+                payee: d.payee,
                 amount: money(d.amount, decimals),
                 status: d.status,
               }))}
@@ -381,7 +505,7 @@ export default function RewardsPage() {
                             {money(d.amount, decimals)}
                           </div>
                           <div className="text-[11.5px] text-zinc-500">
-                            from {shortAddress(d.company)}
+                            from {shortAddress(d.payer)}
                             {r && ` · ${r.severity} finding anchored`}
                           </div>
                         </div>

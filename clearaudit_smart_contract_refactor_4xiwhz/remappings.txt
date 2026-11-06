@@ -1,3 +1,0 @@
-forge-std/=lib/forge-std/src/
-@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
-@forshtat/hegota-support/=node_modules/@forshtat/hegota-support/

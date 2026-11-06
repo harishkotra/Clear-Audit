@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BOUNTY_VAULT_ABI, ERC20_ABI } from "@/lib/abi";
+import { BOUNTY_VAULT_V2_ABI, ERC20_ABI } from "@/lib/abi";
 import { ARC_CHAIN_ID, USDC_ADDRESS, VAULT_ADDRESS } from "@/lib/constants";
 import { arcClient, readToken } from "@/lib/arc";
 import { arkivWriterStatus } from "@/lib/arkiv";
@@ -16,7 +16,7 @@ export async function GET() {
     const [nextDealId, balance, token] = await Promise.all([
       arcClient.readContract({
         address: VAULT_ADDRESS,
-        abi: BOUNTY_VAULT_ABI,
+        abi: BOUNTY_VAULT_V2_ABI,
         functionName: "nextDealId",
       }) as Promise<bigint>,
       arcClient.readContract({
@@ -35,20 +35,31 @@ export async function GET() {
 
     const deals = await Promise.all(
       ids.map(async (id) => {
-        const [company, researcher, amount, status] = (await arcClient.readContract({
-          address: VAULT_ADDRESS,
-          abi: BOUNTY_VAULT_ABI,
-          functionName: "getDeal",
-          args: [id],
-        })) as readonly [`0x${string}`, `0x${string}`, bigint, number];
+        const [[payer, payee, amount, status], row] = await Promise.all([
+          arcClient.readContract({
+            address: VAULT_ADDRESS,
+            abi: BOUNTY_VAULT_V2_ABI,
+            functionName: "getDeal",
+            args: [id],
+          }) as Promise<readonly [`0x${string}`, `0x${string}`, bigint, number]>,
+          arcClient.readContract({
+            address: VAULT_ADDRESS,
+            abi: BOUNTY_VAULT_V2_ABI,
+            functionName: "deals",
+            args: [id],
+          }) as Promise<readonly [`0x${string}`, `0x${string}`, `0x${string}`, bigint, bigint, bigint, number, boolean, boolean, `0x${string}`, `0x${string}`]>,
+        ]);
 
         return {
           id: String(id),
-          company,
-          researcher,
+          payer,
+          payee,
           amount: amount.toString(),
           status,
           statusLabel: STATUS_COPY[status]?.label ?? "Unknown",
+          deadline: Number(row[4]),
+          claimedAt: Number(row[5]),
+          agentMode: row[7],
         };
       }),
     );

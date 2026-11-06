@@ -1,4 +1,12 @@
-import { BOUNTY_VAULT_ABI, ERC20_ABI, DEAL_STATUS, DEAL_STATUS_LABEL } from "./abi";
+import {
+  BOUNTY_VAULT_ABI,
+  BOUNTY_VAULT_V2_ABI,
+  ERC20_ABI,
+  DEAL_STATUS,
+  DEAL_STATUS_LABEL,
+  DEAL_STATUS_V2,
+  DEAL_STATUS_V2_LABEL,
+} from "./abi";
 
 // ─────────────────────────── Chains ────────────────────────────
 
@@ -9,10 +17,17 @@ export const DEVNET_CHAIN_ID = 1337;
 
 // ───────────────────────── Arc Testnet (product) ────────────────
 
+/** v2 vault: open tasks, deadlines, one-argument release, and no fee path. */
 export const VAULT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_ADDRESS ??
-  "0x283776AB6c2B139d6097285821AC5EdDe43e115e") as `0x${string}`;
-export const PAYMASTER_ADDRESS = (process.env.NEXT_PUBLIC_PAYMASTER_ADDRESS ??
-  "0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B") as `0x${string}`;
+  "0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593") as `0x${string}`;
+/** v1 vault, kept only so the EF devnet prototype keeps its own wiring straight. */
+export const VAULT_V1_ADDRESS = "0x283776AB6c2B139d6097285821AC5EdDe43e115e" as `0x${string}`;
+/** v2 has no paymaster: with no fee to sponsor, there is nothing for one to do. */
+export const PAYMASTER_ADDRESS =
+  "0x0000000000000000000000000000000000000000" as `0x${string}`;
+export const ARBITRATOR_ADDRESS = (process.env.NEXT_PUBLIC_ARBITRATOR_ADDRESS ??
+  "0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2") as `0x${string}`;
+export { DEAL_STATUS_V2, DEAL_STATUS_V2_LABEL };
 export const USDC_ADDRESS = (process.env.NEXT_PUBLIC_USDC_ADDRESS ??
   "0x3600000000000000000000000000000000000000") as `0x${string}`;
 export const ARC_RPC = process.env.NEXT_PUBLIC_ARC_RPC_URL ?? "https://rpc.testnet.arc.io";

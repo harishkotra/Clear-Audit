@@ -3,246 +3,371 @@ pragma solidity ^0.8.24;
 
 import {BountyVaultTestBase} from "./BountyVault.Base.t.sol";
 import {BountyVault} from "../BountyVault.sol";
-import {MockFalseToken} from "../test-helpers/MockFalseToken.sol";
 
-/// @dev Revert paths, access control, state-machine guards, no double payout.
+/// @dev Every require/revert path of BountyVault v2, plus deadline boundaries.
 contract BountyVaultRevertTest is BountyVaultTestBase {
     // ───────── createBounty ─────────
 
-    function test_Create_RevertsZeroWhitehat() public {
-        vm.prank(protocol);
+    function test_CreateBounty_RevertsOnZeroPayee() public {
+        vm.prank(payer);
         vm.expectRevert(BountyVault.ZeroAddress.selector);
-        vault.createBounty(address(0), AMT);
+        vault.createBounty(address(0), uint128(AMT), 0, CRIT);
     }
 
-    function test_Create_RevertsZeroAmount() public {
-        vm.prank(protocol);
+    function test_CreateBounty_RevertsWhenPayeeIsPayer() public {
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.RoleConflict.selector);
+        vault.createBounty(payer, uint128(AMT), 0, CRIT);
+    }
+
+    function test_CreateBounty_RevertsOnZeroAmount() public {
+        vm.prank(payer);
         vm.expectRevert(BountyVault.ZeroAmount.selector);
-        vault.createBounty(whitehat, 0);
+        vault.createBounty(payee, 0, 0, CRIT);
     }
 
-    function test_Create_RevertsWhitehatIsProtocol() public {
-        vm.prank(protocol);
-        vm.expectRevert(BountyVault.RoleConflict.selector);
-        vault.createBounty(protocol, AMT);
+    function test_CreateBounty_RevertsOnPastDeadline() public {
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.DeadlinePassed.selector);
+        vault.createBounty(payee, uint128(AMT), t0 - 1, CRIT);
     }
 
-    function test_Create_RevertsCallerIsArbitrator() public {
-        usdc.mint(arbitrator, AMT);
-        vm.startPrank(arbitrator);
-        usdc.approve(address(vault), AMT);
-        vm.expectRevert(BountyVault.RoleConflict.selector);
-        vault.createBounty(whitehat, AMT);
-        vm.stopPrank();
+    function test_CreateBounty_RevertsWhenDeadlineIsNow() public {
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.DeadlinePassed.selector);
+        vault.createBounty(payee, uint128(AMT), t0, CRIT);
     }
 
-    function test_Create_RevertsWhitehatIsArbitrator() public {
-        vm.prank(protocol);
-        vm.expectRevert(BountyVault.RoleConflict.selector);
-        vault.createBounty(arbitrator, AMT);
-    }
-
-    function test_Create_RevertsWithoutAllowance() public {
-        vm.prank(stranger);
-        vm.expectRevert(); // MockUSDC: "Insufficient balance"
-        vault.createBounty(whitehat, AMT);
-        assertEq(vault.nextDealId(), 0);
-    }
-
-    function test_Create_RevertsInsufficientAllowance() public {
-        usdc.mint(stranger, AMT);
-        vm.startPrank(stranger);
-        usdc.approve(address(vault), AMT - 1);
-        vm.expectRevert(bytes("Insufficient allowance"));
-        vault.createBounty(whitehat, AMT);
-        vm.stopPrank();
-    }
-
-    function test_Create_RevertsTransferFailedOnFalseReturn() public {
-        MockFalseToken ft = new MockFalseToken();
-        BountyVault v = new BountyVault(address(ft), paymaster, arbitrator);
-        ft.mint(protocol, AMT);
-        vm.prank(protocol);
-        ft.approve(address(v), AMT);
-        ft.setFailing(true);
-        vm.prank(protocol);
-        vm.expectRevert(BountyVault.TransferFailed.selector);
-        v.createBounty(whitehat, AMT);
-        assertEq(v.nextDealId(), 0, "effects rolled back");
-    }
-
-    // ───────── releaseBounty ─────────
-
-    function test_Release_WhitehatCannotSelfRelease() public {
-        uint256 id = _create();
-        vm.prank(whitehat);
-        vm.expectRevert(BountyVault.OnlyProtocolOrPaymaster.selector);
-        vault.releaseBounty(id, 0, whitehat);
-        assertEq(usdc.balanceOf(whitehat), 0);
+    function test_CreateBounty_AllowsDeadlineOneSecondAhead() public {
+        uint256 id = _bountyD(t0 + 1);
         assertEq(uint8(_status(id)), uint8(BountyVault.Status.Open));
     }
 
-    function test_Release_ArbitratorCannotRelease() public {
-        uint256 id = _create();
-        vm.prank(arbitrator);
-        vm.expectRevert(BountyVault.OnlyProtocolOrPaymaster.selector);
-        vault.releaseBounty(id, 0, whitehat);
-    }
-
-    function test_Release_StrangerCannotRelease() public {
-        uint256 id = _create();
-        vm.prank(stranger);
-        vm.expectRevert(BountyVault.OnlyProtocolOrPaymaster.selector);
-        vault.releaseBounty(id, 0, whitehat);
-    }
-
-    function test_Release_OtherProtocolCannotReleaseForeignDeal() public {
-        uint256 id = _create();
-        address other = makeAddr("otherProtocol");
-        vm.prank(other);
-        vm.expectRevert(BountyVault.OnlyProtocolOrPaymaster.selector);
-        vault.releaseBounty(id, 0, whitehat);
-    }
-
-    function test_Release_NonexistentDealByStrangerUnauthorized() public {
-        vm.prank(stranger);
-        vm.expectRevert(BountyVault.OnlyProtocolOrPaymaster.selector);
-        vault.releaseBounty(42, 0, whitehat);
-    }
-
-    function test_Release_NonexistentDealByPaymasterNotOpen() public {
-        vm.prank(paymaster);
-        vm.expectRevert(BountyVault.BountyNotOpen.selector);
-        vault.releaseBounty(42, 0, address(0));
-    }
-
-    function test_Release_PaymasterWhitehatMismatch() public {
-        uint256 id = _create();
-        vm.prank(paymaster);
-        vm.expectRevert(BountyVault.WhitehatMismatch.selector);
-        vault.releaseBounty(id, 0, stranger);
-    }
-
-    function test_Release_PaymasterFeeExceedsAmount() public {
-        uint256 id = _create();
-        vm.prank(paymaster);
-        vm.expectRevert(BountyVault.FeeExceedsAmount.selector);
-        vault.releaseBounty(id, AMT + 1, whitehat);
-    }
-
-    function test_Release_NoDoublePayoutByProtocol() public {
-        uint256 id = _create();
-        _create(); // second deal funds remain in vault
-        vm.startPrank(protocol);
-        vault.releaseBounty(id, 0, whitehat);
-        vm.expectRevert(BountyVault.BountyNotOpen.selector);
-        vault.releaseBounty(id, 0, whitehat);
-        vm.stopPrank();
-        assertEq(usdc.balanceOf(whitehat), AMT);
-        assertEq(usdc.balanceOf(address(vault)), AMT);
-    }
-
-    function test_Release_NoDoublePayoutByPaymaster() public {
-        uint256 id = _create();
-        vm.startPrank(paymaster);
-        vault.releaseBounty(id, 1e6, whitehat);
-        vm.expectRevert(BountyVault.BountyNotOpen.selector);
-        vault.releaseBounty(id, 1e6, whitehat);
-        vm.stopPrank();
-    }
-
-    function test_Release_DisputedCannotBeReleasedByProtocol() public {
-        uint256 id = _create();
-        _dispute(id);
-        vm.prank(protocol);
-        vm.expectRevert(BountyVault.BountyNotOpen.selector);
-        vault.releaseBounty(id, 0, whitehat);
-    }
-
-    function test_Release_DisputedCannotBeReleasedByPaymaster() public {
-        uint256 id = _create();
-        _dispute(id);
-        vm.prank(paymaster);
-        vm.expectRevert(BountyVault.BountyNotOpen.selector);
-        vault.releaseBounty(id, 0, whitehat);
-    }
-
-    function test_Release_ResolvedCannotBeReleased() public {
-        uint256 id = _create();
-        _dispute(id);
-        vm.prank(arbitrator);
-        vault.resolveDispute(id, false);
-        vm.prank(protocol);
-        vm.expectRevert(BountyVault.BountyNotOpen.selector);
-        vault.releaseBounty(id, 0, whitehat);
-    }
-
-    function test_Release_RevertsTransferFailedOnFalseReturn() public {
-        MockFalseToken ft = new MockFalseToken();
-        BountyVault v = new BountyVault(address(ft), paymaster, arbitrator);
-        ft.mint(protocol, AMT);
-        vm.startPrank(protocol);
-        ft.approve(address(v), AMT);
-        uint256 id = v.createBounty(whitehat, AMT);
-        vm.stopPrank();
-        ft.setFailing(true);
-        vm.prank(protocol);
+    function test_CreateBounty_RevertsWithoutAllowanceAndConsumesNoId() public {
+        vm.prank(stranger); // no funds, no allowance
         vm.expectRevert(BountyVault.TransferFailed.selector);
-        v.releaseBounty(id, 0, whitehat);
-        (,,, BountyVault.Status s) = v.getDeal(id);
-        assertEq(uint8(s), uint8(BountyVault.Status.Open), "status rolled back");
+        vault.createBounty(payee, uint128(AMT), 0, CRIT);
+        assertEq(vault.nextDealId(), 0);
     }
 
-    // ───────── disputeBounty ─────────
+    // ───────── createOpenTask ─────────
 
-    function test_Dispute_OnlyWhitehat() public {
-        uint256 id = _create();
-        vm.prank(protocol);
-        vm.expectRevert(BountyVault.OnlyWhitehat.selector);
-        vault.disputeBounty(id);
+    function test_CreateOpenTask_RevertsOnZeroAmount() public {
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.ZeroAmount.selector);
+        vault.createOpenTask(0, t0 + DAY, CRIT);
+    }
+
+    function test_CreateOpenTask_RevertsOnZeroDeadline() public {
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.DeadlineRequired.selector);
+        vault.createOpenTask(uint128(AMT), 0, CRIT);
+    }
+
+    function test_CreateOpenTask_RevertsOnPastDeadline() public {
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.DeadlinePassed.selector);
+        vault.createOpenTask(uint128(AMT), t0 - 1, CRIT);
+    }
+
+    function test_CreateOpenTask_RevertsWhenDeadlineIsNow() public {
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.DeadlinePassed.selector);
+        vault.createOpenTask(uint128(AMT), t0, CRIT);
+    }
+
+    function test_CreateOpenTask_RevertsWithoutAllowance() public {
         vm.prank(stranger);
-        vm.expectRevert(BountyVault.OnlyWhitehat.selector);
-        vault.disputeBounty(id);
+        vm.expectRevert(BountyVault.TransferFailed.selector);
+        vault.createOpenTask(uint128(AMT), t0 + DAY, CRIT);
+        assertEq(vault.nextDealId(), 0);
+    }
+
+    // ───────── claimTask ─────────
+
+    function test_ClaimTask_RevertsOnUnknownDeal() public {
+        vm.prank(claimer);
+        vm.expectRevert(BountyVault.BountyNotOpen.selector);
+        vault.claimTask(42);
+    }
+
+    function test_ClaimTask_RevertsOnNamedDeal() public {
+        uint256 id = _bountyD(t0 + DAY);
+        vm.prank(claimer);
+        vm.expectRevert(BountyVault.NotClaimable.selector);
+        vault.claimTask(id);
+    }
+
+    function test_ClaimTask_RevertsOnNamedDealEvenForPayee() public {
+        uint256 id = _bountyD(t0 + DAY);
+        vm.prank(payee);
+        vm.expectRevert(BountyVault.NotClaimable.selector);
+        vault.claimTask(id);
+    }
+
+    function test_ClaimTask_RevertsWhenAlreadyClaimed() public {
+        uint256 id = _task(t0 + DAY);
+        _claim(id, claimer);
+        vm.prank(stranger);
+        vm.expectRevert(BountyVault.AlreadyClaimed.selector);
+        vault.claimTask(id);
+    }
+
+    function test_ClaimTask_RevertsForPayer() public {
+        uint256 id = _task(t0 + DAY);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.RoleConflict.selector);
+        vault.claimTask(id);
+    }
+
+    function test_ClaimTask_RevertsForArbitrator() public {
+        uint256 id = _task(t0 + DAY);
         vm.prank(arbitrator);
-        vm.expectRevert(BountyVault.OnlyWhitehat.selector);
-        vault.disputeBounty(id);
-        vm.prank(paymaster);
-        vm.expectRevert(BountyVault.OnlyWhitehat.selector);
-        vault.disputeBounty(id);
+        vm.expectRevert(BountyVault.RoleConflict.selector);
+        vault.claimTask(id);
     }
 
-    function test_Dispute_NonexistentDeal() public {
-        vm.prank(whitehat);
-        vm.expectRevert(BountyVault.OnlyWhitehat.selector);
-        vault.disputeBounty(7);
-        vm.prank(address(0));
+    function test_ClaimTask_RevertsAfterRelease() public {
+        uint256 id = _task(t0 + DAY);
+        _claim(id, claimer);
+        _release(id);
+        vm.prank(stranger);
         vm.expectRevert(BountyVault.BountyNotOpen.selector);
-        vault.disputeBounty(7); // address(0) matches empty whitehat; status None blocks it
+        vault.claimTask(id);
     }
 
-    function test_Dispute_TwiceReverts() public {
-        uint256 id = _create();
-        _dispute(id);
-        vm.prank(whitehat);
+    function test_ClaimTask_RevertsOnDisputedDeal() public {
+        uint256 id = _bounty();
+        _dispute(id, payee);
+        vm.prank(claimer);
         vm.expectRevert(BountyVault.BountyNotOpen.selector);
-        vault.disputeBounty(id);
+        vault.claimTask(id);
     }
 
-    function test_Dispute_AfterReleaseReverts() public {
-        uint256 id = _create();
-        vm.prank(protocol);
-        vault.releaseBounty(id, 0, whitehat);
-        vm.prank(whitehat);
+    // ───────── deadline boundaries ─────────
+
+    function test_ClaimTask_BoundaryBeforeAtAfterDeadline() public {
+        uint64 dl = t0 + DAY;
+        uint256 a = _task(dl);
+        uint256 b = _task(dl);
+        uint256 c = _task(dl);
+
+        vm.warp(dl - 1);
+        _claim(a, claimer); // before: ok
+
+        vm.warp(dl);
+        _claim(b, claimer); // exactly at: ok
+
+        vm.warp(dl + 1);
+        vm.prank(claimer);
+        vm.expectRevert(BountyVault.DeadlinePassed.selector);
+        vault.claimTask(c); // after: DeadlinePassed
+    }
+
+    function test_AssignPayee_BoundaryBeforeAtAfterDeadline() public {
+        uint64 dl = t0 + DAY;
+        uint256 a = _bountyD(dl);
+        uint256 b = _bountyD(dl);
+        uint256 c = _bountyD(dl);
+
+        vm.warp(dl - 1);
+        vm.prank(payer);
+        vault.assignPayee(a, claimer);
+        vm.warp(dl);
+        vm.prank(payer);
+        vault.assignPayee(b, claimer);
+        vm.warp(dl + 1);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.DeadlinePassed.selector);
+        vault.assignPayee(c, claimer);
+    }
+
+    function test_Cancel_BoundaryBeforeAtAfterDeadline() public {
+        uint64 dl = t0 + DAY;
+        uint256 a = _bountyD(dl);
+        uint256 b = _bountyD(dl);
+        uint256 c = _bountyD(dl);
+
+        vm.warp(dl - 1);
+        vm.prank(payer);
+        vault.cancel(a);
+        vm.warp(dl);
+        vm.prank(payer);
+        vault.cancel(b);
+        vm.warp(dl + 1);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.DeadlinePassed.selector);
+        vault.cancel(c);
+    }
+
+    function test_Refund_BoundaryBeforeAtAfterDeadline() public {
+        uint64 dl = t0 + DAY;
+        uint256 id = _bountyD(dl);
+
+        vm.warp(dl - 1);
+        vm.prank(stranger);
+        vm.expectRevert(BountyVault.NotYetExpired.selector);
+        vault.refundExpired(id);
+
+        vm.warp(dl);
+        vm.prank(stranger);
+        vm.expectRevert(BountyVault.NotYetExpired.selector);
+        vault.refundExpired(id);
+
+        vm.warp(dl + 1);
+        vm.prank(stranger);
+        vault.refundExpired(id);
+        assertEq(uint8(_status(id)), uint8(BountyVault.Status.ResolvedToPayer));
+        assertEq(usdc.balanceOf(payer), FUNDS);
+    }
+
+    function test_Refund_RevertsWhenDeadlineZeroEvenMuchLater() public {
+        uint256 id = _bounty();
+        vm.warp(t0 + 3650 days);
+        vm.prank(stranger);
+        vm.expectRevert(BountyVault.NotYetExpired.selector);
+        vault.refundExpired(id);
+    }
+
+    // ───────── assignPayee ─────────
+
+    function test_AssignPayee_RevertsForNonPayer() public {
+        uint256 id = _task(t0 + DAY);
+        vm.prank(stranger);
+        vm.expectRevert(BountyVault.OnlyPayer.selector);
+        vault.assignPayee(id, claimer);
+    }
+
+    function test_AssignPayee_RevertsOnUnknownDeal() public {
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.OnlyPayer.selector);
+        vault.assignPayee(7, claimer);
+    }
+
+    function test_AssignPayee_RevertsWhenNotOpen() public {
+        uint256 id = _bounty();
+        _release(id);
+        vm.prank(payer);
         vm.expectRevert(BountyVault.BountyNotOpen.selector);
-        vault.disputeBounty(id);
+        vault.assignPayee(id, claimer);
+    }
+
+    function test_AssignPayee_RevertsAfterClaim() public {
+        uint256 id = _task(t0 + DAY);
+        _claim(id, claimer);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.AlreadyClaimed.selector);
+        vault.assignPayee(id, stranger);
+    }
+
+    function test_AssignPayee_RevertsOnZeroPayee() public {
+        uint256 id = _task(t0 + DAY);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.ZeroAddress.selector);
+        vault.assignPayee(id, address(0));
+    }
+
+    function test_AssignPayee_RevertsToPayerOrArbitrator() public {
+        uint256 id = _task(t0 + DAY);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.RoleConflict.selector);
+        vault.assignPayee(id, payer);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.RoleConflict.selector);
+        vault.assignPayee(id, arbitrator);
+    }
+
+    // ───────── release ─────────
+
+    function test_Release_RevertsForNonPayer() public {
+        uint256 id = _bounty();
+        address[4] memory callers = [payee, stranger, paymaster, arbitrator];
+        for (uint256 i; i < callers.length; i++) {
+            vm.prank(callers[i]);
+            vm.expectRevert(BountyVault.OnlyPayer.selector);
+            vault.release(id);
+        }
+        assertEq(_vaultBal(), AMT);
+    }
+
+    function test_Release_RevertsWhenPayeeUnset() public {
+        uint256 id = _task(t0 + DAY);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.PayeeNotSet.selector);
+        vault.release(id);
+    }
+
+    function test_Release_RevertsTwice() public {
+        uint256 id = _bounty();
+        _release(id);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.BountyNotOpen.selector);
+        vault.release(id);
+        assertEq(usdc.balanceOf(payee), AMT);
+    }
+
+    function test_Release_RevertsOnDisputedDeal() public {
+        uint256 id = _bounty();
+        _dispute(id, payee);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.BountyNotOpen.selector);
+        vault.release(id);
+    }
+
+    function test_Release_RevertsOnUnknownDeal() public {
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.OnlyPayer.selector);
+        vault.release(99);
+    }
+
+    // ───────── dispute ─────────
+
+    function test_Dispute_RevertsForStranger() public {
+        uint256 id = _bounty();
+        address[3] memory callers = [stranger, arbitrator, paymaster];
+        for (uint256 i; i < callers.length; i++) {
+            vm.prank(callers[i]);
+            vm.expectRevert(BountyVault.OnlyParty.selector);
+            vault.dispute(id);
+        }
+    }
+
+    function test_Dispute_RevertsWhenPayeeUnset() public {
+        uint256 id = _task(t0 + DAY);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.PayeeNotSet.selector);
+        vault.dispute(id);
+    }
+
+    function test_Dispute_StrangerOnUnclaimedTaskIsOnlyParty() public {
+        uint256 id = _task(t0 + DAY);
+        vm.prank(stranger);
+        vm.expectRevert(BountyVault.OnlyParty.selector);
+        vault.dispute(id);
+    }
+
+    function test_Dispute_RevertsWhenNotOpen() public {
+        uint256 id = _bounty();
+        _dispute(id, payee);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.BountyNotOpen.selector);
+        vault.dispute(id);
+    }
+
+    function test_Dispute_RevertsAfterRelease() public {
+        uint256 id = _bounty();
+        _release(id);
+        vm.prank(payee);
+        vm.expectRevert(BountyVault.BountyNotOpen.selector);
+        vault.dispute(id);
     }
 
     // ───────── resolveDispute ─────────
 
-    function test_Resolve_OnlyArbitrator() public {
-        uint256 id = _create();
-        _dispute(id);
-        address[5] memory callers = [protocol, whitehat, paymaster, stranger, address(this)];
+    function test_Resolve_RevertsForNonArbitrator() public {
+        uint256 id = _bounty();
+        _dispute(id, payee);
+        address[4] memory callers = [payer, payee, stranger, paymaster];
         for (uint256 i; i < callers.length; i++) {
             vm.prank(callers[i]);
             vm.expectRevert(BountyVault.OnlyArbitrator.selector);
@@ -251,58 +376,77 @@ contract BountyVaultRevertTest is BountyVaultTestBase {
         assertEq(uint8(_status(id)), uint8(BountyVault.Status.Disputed));
     }
 
-    function test_Resolve_OpenNotResolvable() public {
-        uint256 id = _create();
+    function test_Resolve_RevertsWhenNotDisputed() public {
+        uint256 id = _bounty();
         vm.prank(arbitrator);
         vm.expectRevert(BountyVault.NotDisputed.selector);
         vault.resolveDispute(id, true);
     }
 
-    function test_Resolve_NonexistentNotResolvable() public {
+    function test_Resolve_RevertsTwice() public {
+        uint256 id = _bounty();
+        _dispute(id, payee);
+        _resolve(id, true);
         vm.prank(arbitrator);
-        vm.expectRevert(BountyVault.NotDisputed.selector);
-        vault.resolveDispute(55, false);
-    }
-
-    function test_Resolve_ReleasedNotResolvable() public {
-        uint256 id = _create();
-        vm.prank(protocol);
-        vault.releaseBounty(id, 0, whitehat);
-        vm.prank(arbitrator);
-        vm.expectRevert(BountyVault.NotDisputed.selector);
-        vault.resolveDispute(id, true);
-    }
-
-    function test_Resolve_NoDoublePayout() public {
-        uint256 id = _create();
-        _create();
-        _dispute(id);
-        vm.startPrank(arbitrator);
-        vault.resolveDispute(id, true);
-        vm.expectRevert(BountyVault.NotDisputed.selector);
-        vault.resolveDispute(id, true);
         vm.expectRevert(BountyVault.NotDisputed.selector);
         vault.resolveDispute(id, false);
-        vm.stopPrank();
-        assertEq(usdc.balanceOf(whitehat), AMT);
-        assertEq(usdc.balanceOf(address(vault)), AMT);
     }
 
-    function test_Resolve_RevertsTransferFailedOnFalseReturn() public {
-        MockFalseToken ft = new MockFalseToken();
-        BountyVault v = new BountyVault(address(ft), paymaster, arbitrator);
-        ft.mint(protocol, AMT);
-        vm.startPrank(protocol);
-        ft.approve(address(v), AMT);
-        uint256 id = v.createBounty(whitehat, AMT);
-        vm.stopPrank();
-        vm.prank(whitehat);
-        v.disputeBounty(id);
-        ft.setFailing(true);
+    function test_Resolve_RevertsOnReleasedAndUnknownDeals() public {
+        uint256 id = _bounty();
+        _release(id);
         vm.prank(arbitrator);
-        vm.expectRevert(BountyVault.TransferFailed.selector);
-        v.resolveDispute(id, true);
-        (,,, BountyVault.Status s) = v.getDeal(id);
-        assertEq(uint8(s), uint8(BountyVault.Status.Disputed), "status rolled back");
+        vm.expectRevert(BountyVault.NotDisputed.selector);
+        vault.resolveDispute(id, true);
+        // an unknown id has no recorded arbitrator, so even the arbitrator is rejected
+        vm.prank(arbitrator);
+        vm.expectRevert(BountyVault.OnlyArbitrator.selector);
+        vault.resolveDispute(500, true);
+    }
+
+    // ───────── cancel ─────────
+
+    function test_Cancel_RevertsForNonPayer() public {
+        uint256 id = _bounty();
+        address[3] memory callers = [payee, stranger, arbitrator];
+        for (uint256 i; i < callers.length; i++) {
+            vm.prank(callers[i]);
+            vm.expectRevert(BountyVault.OnlyPayer.selector);
+            vault.cancel(id);
+        }
+    }
+
+    function test_Cancel_RevertsWhenNotOpen() public {
+        uint256 id = _bounty();
+        _dispute(id, payee);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.BountyNotOpen.selector);
+        vault.cancel(id);
+    }
+
+    function test_Cancel_RevertsTwice() public {
+        uint256 id = _bounty();
+        vm.prank(payer);
+        vault.cancel(id);
+        vm.prank(payer);
+        vm.expectRevert(BountyVault.BountyNotOpen.selector);
+        vault.cancel(id);
+        assertEq(usdc.balanceOf(payer), FUNDS);
+    }
+
+    // ───────── refundExpired ─────────
+
+    function test_Refund_RevertsOnUnknownDeal() public {
+        vm.prank(stranger);
+        vm.expectRevert(BountyVault.BountyNotOpen.selector);
+        vault.refundExpired(123);
+    }
+
+    function test_Refund_RevertsTwice() public {
+        uint256 id = _bountyD(t0 + DAY);
+        vm.warp(t0 + DAY + 1);
+        vault.refundExpired(id);
+        vm.expectRevert(BountyVault.BountyNotOpen.selector);
+        vault.refundExpired(id);
     }
 }

@@ -5,306 +5,367 @@ import "./interfaces/IERC20.sol";
 
 /**
  * +------------------------------------------------------------------+
- * |                 ClearAudit - Zero-Trust Bug Bounty Vault          |
+ * |              ClearAudit v2 - Zero-Trust Bug Bounty Vault           |
  * +------------------------------------------------------------------+
- * | Protocols escrow USDC for named whitehats. A whitehat cannot       |
- * | self-release: normal payout requires the protocol's approval,     |
- * | either directly or through the authorized paymaster integration.  |
- * | A whitehat can instead freeze an open bounty for arbitration.      |
- * | The arbitrator is immutable, fixed at deployment, and the one      |
- * | trusted party for disputes; "zero-trust" does not remove that trust.|
+ * | Payers escrow USDC for named payees or claimable agent tasks.      |
+ * | Only the payer can release; a payee can never self-release.        |
+ * | Either party can dispute. The fixed arbitrator decides disputes,  |
+ * | and only Open deals can expire into a refund to the payer.        |
+ * | Arbitration is trusted: "zero-trust" does not remove that trust.   |
+ * | Fees are always ZERO. Sponsored gas funds the payer's own release |
+ * | call; the immutable paymaster is wiring, not a privileged caller. |
  * +------------------------------------------------------------------+
  *
  * State machine (terminal states have no outgoing transitions):
  *
- * None --> Open --> Released
+ * None --> Open --> Released                      (payer release)
+ *            |  \-> ResolvedToPayer               (cancel / expiry)
  *            |
- *            +--> Disputed --> ResolvedToWhitehat
- *                          \-> ResolvedToProtocol
+ *            +--> Disputed --> ResolvedToPayee     (arbitrator)
+ *                         \-> ResolvedToPayer     (arbitrator only)
  *
- * Role       | Can do                         | Cannot do
- * -----------+--------------------------------+------------------------
- * Protocol   | Deposit; approve open payout   | Refund itself; resolve
- * Whitehat   | Dispute its own open bounty    | Self-release; resolve
- * Arbitrator | Resolve disputed bounties      | Join a bounty; release
- * Paymaster  | Relay open payout; receive fee | Dispute; resolve
+ * Role       | Can do                            | Cannot do
+ * -----------+-----------------------------------+---------------------
+ * Payer      | Fund; assign; release; dispute;    | Claim own task;
+ *            | cancel before deadline if unclaimed| arbitrate
+ * Payee      | Claim eligible task; dispute       | Self-release; resolve
+ * Arbitrator | Resolve disputed deals             | Be payer or payee
+ * Anyone     | Refund expired Open deals          | Refund Disputed deals
+ * Paymaster  | Sponsor payer's own release gas     | Privileged release
  *
- * The paymaster is an authorized execution boundary: it must preserve
- * protocol approval when relaying a payout. This vault does not verify
- * a separate protocol signature on calls made by the paymaster.
+ * Judge notes: assigned means named by the payer; claimedAt != 0 means
+ * claimed through claimTask. An assigned but unclaimed deal is cancellable
+ * and reassignable before its deadline. Claiming does not release funds.
+ * Deadlines gate claiming, assignment and cancellation, not payer release
+ * or disputes. A zero deadline means no expiry, and is forbidden for tasks.
+ * The deadline is the delivery contract: any expired Open deal is refundable,
+ * whether claimed or not. Disputed deals await the arbitrator even after expiry.
+ * Release remains allowed after expiry; the first release or refund wins.
  * Token accounting assumes standard, non-fee-on-transfer USDC semantics.
+ * This contract is non-upgradeable; all wiring is fixed at deployment.
  *
  * KNOWN LIMITATION — USDC ISSUER BLOCKLIST / RESTRICTED RECIPIENTS:
- * If the whitehat or protocol is blocklisted by the USDC issuer, a transfer
- * to that party reverts and the corresponding payout cannot settle; funds
- * stay locked in the vault and state changes roll back. Judges should not
+ * If a payee or payer is blocklisted by the USDC issuer, its payout reverts;
+ * funds stay locked and all state changes roll back. Judges should not
  * mistake CEI for a guarantee that issuer-controlled USDC will transfer.
- * The protocol mitigates this by choosing a valid whitehat address at creation,
- * but a later issuer restriction can still prevent settlement. Production
- * would add a pull-payment design with a recovery address; no such recovery
- * mechanism is implemented here, and this limitation is documentation only.
+ * Choosing a valid payee mitigates this, but later restrictions can still
+ * prevent settlement, including refunds to the payer. Production would add
+ * pull-payment with a recovery address; none is implemented here.
  */
 contract BountyVault {
     // ────────────────────────── State ──────────────────────────────
 
-    /// @notice The ERC-20 token used for bounties (USDC or the mock).
+    /// @notice The ERC-20 token used for every bounty (USDC or the mock).
     IERC20 public immutable token;
 
-    /// @notice Authorized payout relay; cannot decide dispute outcomes.
+    /// @notice Sponsorship wiring only; grants no special vault privilege.
     address public immutable paymaster;
 
-    /// @notice Fixed at deployment: the one trusted party for disputes.
+    /// @notice Fixed neutral adjudicator, copied into each deal at creation.
     address public immutable arbitrator;
 
     /// @dev Auto-incrementing deal ID; the first valid ID is zero.
     uint256 public nextDealId;
 
-    /// @notice None distinguishes a nonexistent deal from an open bounty.
     enum Status {
         None,
         Open,
         Disputed,
         Released,
-        ResolvedToWhitehat,
-        ResolvedToProtocol
+        ResolvedToPayee,
+        ResolvedToPayer
     }
 
-    /// @notice One protocol-funded bounty, with an immutable beneficiary.
     struct Deal {
-        address protocol;     // depositor who approves normal payout
-        address whitehat;     // beneficiary who may request arbitration
-        uint256 amount;       // original deposit (6 decimals for USDC)
-        Status status;        // lifecycle gate preventing repeated payouts
+        address payer;
+        address payee;
+        address token;
+        uint128 amount;
+        uint64 deadline;
+        uint64 claimedAt;
+        Status status;
+        bool agentMode;
+        bool assigned;
+        address arbitrator;
+        bytes32 criteriaHash;
     }
 
-    /// @notice All bounties, indexed by deal ID.
+    /// @notice Historical deposits remain recorded after terminal settlement.
     mapping(uint256 => Deal) public deals;
 
     // ────────────────────────── Events ─────────────────────────────
 
+    // Judge note: docs/AGENT-DISPATCH.md was not available; this is the default event set.
     event BountyCreated(
-        uint256 indexed dealId,
-        address indexed protocol,
-        address indexed whitehat,
-        uint256 amount
+        uint256 indexed id,
+        address indexed payer,
+        address indexed payee,
+        uint128 amount,
+        uint64 deadline,
+        bytes32 criteriaHash,
+        bool agentMode
     );
-
-    event BountyReleased(
-        uint256 indexed dealId,
-        address indexed whitehat,
-        uint256 amountToWhitehat,
-        uint256 feeTaken
-    );
-
-    event BountyDisputed(uint256 indexed dealId, address indexed whitehat);
-
-    event DisputeResolved(
-        uint256 indexed dealId,
-        bool payWhitehat,
-        address indexed recipient,
-        uint256 amount
-    );
+    event TaskClaimed(uint256 indexed id, address indexed payee, uint64 claimedAt);
+    event PayeeAssigned(uint256 indexed id, address indexed payee);
+    event BountyReleased(uint256 indexed id, address indexed payee, uint128 amount);
+    event BountyDisputed(uint256 indexed id, address indexed by);
+    event DisputeResolved(uint256 indexed id, bool toPayee, address indexed recipient, uint128 amount);
+    event BountyRefunded(uint256 indexed id, address indexed payer, uint128 amount, address caller);
+    event BountyCancelled(uint256 indexed id, address indexed payer, uint128 amount);
 
     // ────────────────────────── Errors ─────────────────────────────
 
-    error OnlyProtocolOrPaymaster();
-    error OnlyWhitehat();
-    error OnlyArbitrator();
-    error BountyNotOpen();
-    error NotDisputed();
-    error WhitehatMismatch();
-    error FeeExceedsAmount();
-    error RoleConflict();
-    error TransferFailed();
-    error ZeroAmount();
     error ZeroAddress();
+    error ZeroAmount();
+    error TransferFailed();
+    error RoleConflict();
+    error OnlyArbitrator();
+    error NotDisputed();
+    error BountyNotOpen();
+    error AlreadyClaimed();
+    error DeadlinePassed();
+    error DeadlineRequired();
+    error NotClaimable();
+    error NotYetExpired();
+    error OnlyPayer();
+    error OnlyParty();
+    error PayeeNotSet();
+    error TokenNotContract();
 
     // ────────────────────────── Constructor ────────────────────────
 
-    /**
-     * @notice Fix the asset, authorized relay, and neutral adjudicator.
-     * @dev No setter can replace the arbitrator after funds are deposited.
-     * @param _token Address of the USDC (or mock) ERC-20 token.
-     * @param _paymaster Address authorized to relay approved releases.
-     * @param _arbitrator Address trusted to decide disputed bounty payouts.
-     */
+    /// @notice Fix the asset, optional sponsorship wiring and neutral adjudicator.
+    /// @dev Retains the three-address constructor; no proxy or upgrade path.
+    ///      A zero paymaster means "no gas sponsorship on this deployment", which
+    ///      is what happens when the release path stops taking a fee.
     constructor(address _token, address _paymaster, address _arbitrator) {
-        if (_token == address(0) || _paymaster == address(0) || _arbitrator == address(0)) {
+        if (_token == address(0) || _arbitrator == address(0)) {
             revert ZeroAddress();
         }
+        // Judge note: a no-code "token" would make every low-level transfer look
+        // successful (empty return data) and silently escrow nothing, and the
+        // token is immutable. On Arc the settlement token must be the ERC-20
+        // interface of USDC (0x3600...0000), never a native-asset sentinel.
+        if (_token.code.length == 0) revert TokenNotContract();
         token = IERC20(_token);
         paymaster = _paymaster;
         arbitrator = _arbitrator;
     }
 
-    // ────────────────────────── Protocol Functions ─────────────────
+    // ────────────────────────── Creation ───────────────────────────
 
     /**
-     * @notice Deposit USDC for a specific whitehat; the caller is the protocol.
-     * @dev Approve this vault for `amount` beforehand. The arbitrator cannot
-     *      be either party, and the protocol cannot name itself as whitehat.
-     *      Effects precede the token interaction; failure rolls everything back.
-     * @param whitehat The fixed beneficiary, permitted to dispute but not claim.
-     * @param amount The USDC deposit in token base units (6 decimals for USDC).
-     * @return dealId The new bounty's identifier.
+     * @notice Escrow a bounty for a payer-named payee, optionally with expiry.
+     * @dev Approve amount beforehand. Neutral roles are enforced at creation.
+     *      Write the complete deal before pulling tokens; failure rolls back.
      */
     function createBounty(
-        address whitehat,
-        uint256 amount
-    ) external returns (uint256 dealId) {
-        // Checks: reject unfunded bounties and non-neutral role assignments.
-        if (whitehat == address(0)) revert ZeroAddress();
-        if (amount == 0) revert ZeroAmount();
-        if (whitehat == msg.sender || msg.sender == arbitrator || whitehat == arbitrator) {
+        address payee,
+        uint128 amount,
+        uint64 deadline,
+        bytes32 criteriaHash
+    ) external returns (uint256 id) {
+        if (payee == address(0)) revert ZeroAddress();
+        if (payee == msg.sender || payee == arbitrator || msg.sender == arbitrator) {
             revert RoleConflict();
         }
+        if (amount == 0) revert ZeroAmount();
+        if (deadline != 0 && deadline <= block.timestamp) revert DeadlinePassed();
 
-        // Effects: allocate and record the bounty before calling USDC.
-        dealId = nextDealId++;
-        deals[dealId] = Deal({
-            protocol: msg.sender,
-            whitehat: whitehat,
+        id = nextDealId++;
+        deals[id] = Deal({
+            payer: msg.sender,
+            payee: payee,
+            token: address(token),
             amount: amount,
-            status: Status.Open
+            deadline: deadline,
+            claimedAt: 0,
+            status: Status.Open,
+            agentMode: false,
+            assigned: true,
+            arbitrator: arbitrator,
+            criteriaHash: criteriaHash
         });
-
-        // Interaction: a false return reverts the deposit and all effects.
-        bool ok = token.transferFrom(msg.sender, address(this), amount);
-        if (!ok) revert TransferFailed();
-
-        emit BountyCreated(dealId, msg.sender, whitehat, amount);
+        _pull(msg.sender, amount);
+        emit BountyCreated(id, msg.sender, payee, amount, deadline, criteriaHash, false);
     }
 
-    // ────────────────────────── Protocol / Paymaster Functions ──────
+    /// @notice Escrow an unassigned agent task with a mandatory future deadline.
+    /// @dev No payee is selected until a claim or the payer's assignment.
+    function createOpenTask(uint128 amount, uint64 deadline, bytes32 criteriaHash)
+        external
+        returns (uint256 id)
+    {
+        if (amount == 0) revert ZeroAmount();
+        if (deadline == 0) revert DeadlineRequired();
+        if (deadline <= block.timestamp) revert DeadlinePassed();
+        if (msg.sender == arbitrator) revert RoleConflict();
+
+        id = nextDealId++;
+        deals[id] = Deal({
+            payer: msg.sender,
+            payee: address(0),
+            token: address(token),
+            amount: amount,
+            deadline: deadline,
+            claimedAt: 0,
+            status: Status.Open,
+            agentMode: true,
+            assigned: false,
+            arbitrator: arbitrator,
+            criteriaHash: criteriaHash
+        });
+        _pull(msg.sender, amount);
+        emit BountyCreated(id, msg.sender, address(0), amount, deadline, criteriaHash, true);
+    }
+
+    // ────────────────────────── Payee Selection ────────────────────
+
+    /// @notice Claim an unassigned agent task, without authorizing its payout.
+    /// @dev Check claimedAt first so a repeated claim reports AlreadyClaimed.
+    ///      Claiming exactly at the deadline is allowed; refunds require later.
+    function claimTask(uint256 id) external {
+        Deal storage deal = deals[id];
+        if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.claimedAt != 0) revert AlreadyClaimed();
+        if (deal.payee != address(0) || deal.assigned) revert NotClaimable();
+        if (!deal.agentMode || deal.deadline == 0) revert NotClaimable();
+        if (block.timestamp > deal.deadline) revert DeadlinePassed();
+        if (msg.sender == deal.payer || msg.sender == deal.arbitrator) revert RoleConflict();
+
+        deal.payee = msg.sender;
+        deal.claimedAt = uint64(block.timestamp);
+        emit TaskClaimed(id, msg.sender, deal.claimedAt);
+    }
+
+    /// @notice Name or replace a payee only while the deal remains unclaimed.
+    /// @dev Assignment is distinct from claiming, even on an agent task.
+    function assignPayee(uint256 id, address payee) external {
+        Deal storage deal = deals[id];
+        if (msg.sender != deal.payer) revert OnlyPayer();
+        if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.claimedAt != 0) revert AlreadyClaimed();
+        if (deal.deadline != 0 && block.timestamp > deal.deadline) revert DeadlinePassed();
+        if (payee == address(0)) revert ZeroAddress();
+        if (payee == deal.payer || payee == deal.arbitrator) revert RoleConflict();
+
+        deal.payee = payee;
+        deal.assigned = true;
+        emit PayeeAssigned(id, payee);
+    }
+
+    // ────────────────────────── Settlement ─────────────────────────
 
     /**
-     * @notice Approve and release an open bounty to its recorded whitehat.
-     * @dev The whitehat cannot self-release. The protocol's direct call ignores
-     *      supplied fee/recipient and pays the recorded whitehat in full. That
-     *      branch also wins if protocol and paymaster happen to be identical.
-     *      Judge note: sponsored protocol-account releases still call AS the
-     *      protocol account and therefore use this zero-fee branch. Sponsorship
-     *      is FREE; it does not make msg.sender the paymaster or collect USDC.
-     *      The relay branch checks recipient and bounds the fee; it is reserved
-     *      for a future relay calling AS the paymaster, which must preserve
-     *      protocol approval. Disputed and terminal bounties cannot be released.
-     * @param dealId The bounty to release.
-     * @param fee USDC reimbursement for the paymaster path only.
-     * @param whitehat Must match the recorded beneficiary on the relay path.
+     * @notice Only the payer may release the full amount to the stored payee.
+     * @dev No recipient override or fee parameter exists. Sponsored execution
+     *      calls AS the payer account, never AS a privileged paymaster relay.
+     *      Consuming Open before the transfer prevents repeated settlement.
      */
-    function releaseBounty(
-        uint256 dealId,
-        uint256 fee,
-        address whitehat
-    ) external {
-        Deal storage deal = deals[dealId];
-
-        // Checks: authorization never grants the whitehat a claim path.
-        if (msg.sender != deal.protocol && msg.sender != paymaster) {
-            revert OnlyProtocolOrPaymaster();
-        }
-        // None also fails this check: nonexistent IDs cannot pay out.
+    function release(uint256 id) external {
+        Deal storage deal = deals[id];
+        if (msg.sender != deal.payer) revert OnlyPayer();
         if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.payee == address(0)) revert PayeeNotSet();
 
-        if (msg.sender == deal.protocol) {
-            fee = 0;
-            whitehat = deal.whitehat;
-        } else {
-            if (whitehat != deal.whitehat) revert WhitehatMismatch();
-            if (fee > deal.amount) revert FeeExceedsAmount();
-        }
-
-        // Effects: consume the only release transition BEFORE either transfer.
-        // A callback cannot release or dispute this same bounty again.
         deal.status = Status.Released;
-        uint256 whitehatAmount = deal.amount - fee;
-
-        // Interactions: both transfers must succeed or the entire release reverts.
-        // KNOWN LIMITATION — judge note: USDC issuer blocklisting of the whitehat
-        // makes settlement revert, rolling back Released and leaving funds locked.
-        // The protocol should choose a valid whitehat at creation; production
-        // would add pull-payment with a recovery address for later restrictions.
-        bool ok1 = token.transfer(whitehat, whitehatAmount);
-        if (!ok1) revert TransferFailed();
-
-        if (fee > 0) {
-            bool ok2 = token.transfer(paymaster, fee);
-            if (!ok2) revert TransferFailed();
-        }
-
-        emit BountyReleased(dealId, whitehat, whitehatAmount, fee);
+        _pay(deal.payee, deal.amount);
+        emit BountyReleased(id, deal.payee, deal.amount);
     }
 
-    // ────────────────────────── Dispute Functions ───────────────────
-
-    /**
-     * @notice Freeze the caller's open bounty for neutral arbitration.
-     * @dev Only the recorded whitehat may dispute. No token interaction occurs;
-     *      Disputed blocks normal payout until the immutable arbitrator acts.
-     * @param dealId The open bounty to dispute.
-     */
-    function disputeBounty(uint256 dealId) external {
-        Deal storage deal = deals[dealId];
-        if (msg.sender != deal.whitehat) revert OnlyWhitehat();
+    /// @notice Either recorded party may freeze an open deal for arbitration.
+    /// @dev Once disputed, expiry cannot bypass arbitration or refund the deal.
+    function dispute(uint256 id) external {
+        Deal storage deal = deals[id];
+        if (msg.sender != deal.payer && msg.sender != deal.payee) revert OnlyParty();
         if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.payee == address(0)) revert PayeeNotSet();
 
         deal.status = Status.Disputed;
-        emit BountyDisputed(dealId, deal.whitehat);
+        emit BountyDisputed(id, msg.sender);
+    }
+
+    /// @notice The deal's recorded arbitrator awards the full escrow to one party.
+    /// @dev No split, fee, recipient override or reopening is possible. The
+    ///      selected terminal state precedes the checked token interaction.
+    function resolveDispute(uint256 id, bool toPayee) external {
+        Deal storage deal = deals[id];
+        if (msg.sender != deal.arbitrator) revert OnlyArbitrator();
+        if (deal.status != Status.Disputed) revert NotDisputed();
+
+        deal.status = toPayee ? Status.ResolvedToPayee : Status.ResolvedToPayer;
+        address recipient = toPayee ? deal.payee : deal.payer;
+        _pay(recipient, deal.amount);
+        emit DisputeResolved(id, toPayee, recipient, deal.amount);
     }
 
     /**
-     * @notice Resolve a disputed bounty entirely to one of its two parties.
-     * @dev Only the immutable arbitrator may decide. There is no fee, split,
-     *      recipient override, or path to reopen a resolved bounty. The final
-     *      status is written before transferring the full deposit (CEI).
-     * @param dealId The disputed bounty to resolve.
-     * @param payWhitehat True pays the whitehat; false refunds the protocol.
+     * @notice Anyone may refund an expired Open deal to its payer, claimed or not.
+     * @dev The deadline is the delivery contract. Disputed deals must await the
+     *      arbitrator; expiry never bypasses arbitration. None, Disputed and all
+     *      terminal states fail before deadline checks. A refund deliberately
+     *      reuses ResolvedToPayer; there is no additional Refunded enum value.
+     *      BountyRefunded distinguishes expiry from an arbitrated outcome and
+     *      records the caller without allowing them to redirect the payout.
      */
-    function resolveDispute(uint256 dealId, bool payWhitehat) external {
-        // Checks: arbitrary callers cannot adjudicate or bypass Disputed.
-        if (msg.sender != arbitrator) revert OnlyArbitrator();
-        Deal storage deal = deals[dealId];
-        if (deal.status != Status.Disputed) revert NotDisputed();
+    function refundExpired(uint256 id) external {
+        Deal storage deal = deals[id];
+        if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.deadline == 0 || block.timestamp <= deal.deadline) revert NotYetExpired();
 
-        // Effects: terminal state is committed before the token interaction.
-        deal.status = payWhitehat ? Status.ResolvedToWhitehat : Status.ResolvedToProtocol;
-        address recipient = payWhitehat ? deal.whitehat : deal.protocol;
+        deal.status = Status.ResolvedToPayer;
+        _pay(deal.payer, deal.amount);
+        emit BountyRefunded(id, deal.payer, deal.amount, msg.sender);
+    }
 
-        // Interaction: failure rolls back the terminal state as well as payout.
-        // KNOWN LIMITATION — judge note: if the selected whitehat OR protocol is
-        // USDC-issuer-blocklisted, this transfer reverts and funds stay locked in
-        // Disputed. Choosing a valid whitehat at creation only mitigates that side;
-        // it cannot prevent later restrictions or a blocklisted protocol refund.
-        // Production would add pull-payment with a recovery address, not a silent
-        // recipient override here. This comment intentionally changes no behavior.
-        bool ok = token.transfer(recipient, deal.amount);
-        if (!ok) revert TransferFailed();
+    /// @notice The payer may cancel any unclaimed open deal before expiry.
+    /// @dev A named/assigned payee is not a claim; claimedAt is the sole gate.
+    ///      Zero-deadline deals may be cancelled while otherwise eligible.
+    function cancel(uint256 id) external {
+        Deal storage deal = deals[id];
+        if (msg.sender != deal.payer) revert OnlyPayer();
+        if (deal.status != Status.Open) revert BountyNotOpen();
+        if (deal.claimedAt != 0) revert AlreadyClaimed();
+        if (deal.deadline != 0 && block.timestamp > deal.deadline) revert DeadlinePassed();
 
-        emit DisputeResolved(dealId, payWhitehat, recipient, deal.amount);
+        deal.status = Status.ResolvedToPayer;
+        _pay(deal.payer, deal.amount);
+        emit BountyCancelled(id, deal.payer, deal.amount);
     }
 
     // ────────────────────────── View Helpers ────────────────────────
 
-    /**
-     * @notice Read a bounty's participants, original amount, and lifecycle state.
-     * @dev Unknown IDs return zero addresses, zero amount, and Status.None.
-     * @param dealId The bounty identifier to inspect.
-     * @return protocol The depositor who approves normal payout.
-     * @return whitehat The fixed beneficiary.
-     * @return amount The original deposit, unchanged after payout for history.
-     * @return status The current state, including terminal payout outcomes.
-     */
-    function getDeal(uint256 dealId)
+    /// @notice Stable four-field view for sponsorship; unknown IDs return zeros.
+    /// @dev Amount is widened to uint256; Open remains ABI enum value 1.
+    function getDeal(uint256 id)
         external
         view
-        returns (
-            address protocol,
-            address whitehat,
-            uint256 amount,
-            Status status
-        )
+        returns (address payer, address payee, uint256 amount, Status status)
     {
-        Deal storage d = deals[dealId];
-        return (d.protocol, d.whitehat, d.amount, d.status);
+        Deal storage deal = deals[id];
+        return (deal.payer, deal.payee, deal.amount, deal.status);
+    }
+
+    // ────────────────────────── Token Helpers ──────────────────────
+
+    /// @dev Accept non-returning tokens; reject failure, false or malformed data.
+    ///      Callers must commit all state effects before this interaction.
+    function _pay(address to, uint128 amount) private {
+        (bool ok, bytes memory data) = address(token).call(
+            abi.encodeWithSelector(IERC20.transfer.selector, to, uint256(amount))
+        );
+        if (!ok || (data.length != 0 && (data.length < 32 || abi.decode(data, (uint256)) != 1))) {
+            revert TransferFailed();
+        }
+    }
+
+    /// @dev A failed deposit reverts the allocated ID and the complete deal.
+    function _pull(address from, uint128 amount) private {
+        (bool ok, bytes memory data) = address(token).call(
+            abi.encodeWithSelector(IERC20.transferFrom.selector, from, address(this), uint256(amount))
+        );
+        if (!ok || (data.length != 0 && (data.length < 32 || abi.decode(data, (uint256)) != 1))) {
+            revert TransferFailed();
+        }
     }
 }

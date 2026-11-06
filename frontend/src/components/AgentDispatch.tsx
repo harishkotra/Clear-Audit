@@ -11,7 +11,7 @@ type Status = {
   limits: { maxTokens: number };
 };
 
-type Deal = { id: string; researcher: string; amount: string; status: number };
+type Deal = { id: string; payee: string; amount: string; status: number };
 
 type Result = {
   ok: boolean;
@@ -55,7 +55,7 @@ export default function AgentDispatch({ deals }: { deals: Deal[] }) {
   if (!status?.enabled || !status.operator) return null;
 
   const mine = deals.filter(
-    (d) => d.status === 1 && d.researcher.toLowerCase() === status.operator?.toLowerCase(),
+    (d) => d.status === 1 && d.payee.toLowerCase() === status.operator?.toLowerCase(),
   );
   if (mine.length === 0) return null;
 

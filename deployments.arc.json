@@ -1,0 +1,50 @@
+{
+  "project": "ClearAudit",
+  "network": "Arc Testnet",
+  "chainId": 5042002,
+  "rpcUrl": "https://rpc.testnet.arc.io",
+  "explorer": "https://explorer.testnet.arc.io",
+  "settlementToken": {
+    "address": "0x3600000000000000000000000000000000000000",
+    "symbol": "USDC",
+    "decimals": 6,
+    "note": "Arc native USDC through its ERC-20 interface. Native gas view of the same balance is 18 decimals."
+  },
+  "contracts": {
+    "BountyVault": {
+      "address": "0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593",
+      "txHash": "0x167899b66fbdaf259770a12e18d6f525c6ec1a01c109c8d1c9de38b03a263e5d",
+      "block": 71028686,
+      "version": 2,
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0xf6aD45A5cC8cbC9A33bd792A07625ecE1C9Ca593",
+      "deployer": "0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2",
+      "arbitrator": "0x65B555dDAd787B66F3F1E4Dd4Ff814D11B9A0ed2",
+      "paymaster": "0x0000000000000000000000000000000000000000",
+      "note": "Open tasks with a deadline, one-argument release, refund after expiry, no fee path and therefore no paymaster.",
+      "deployGas": 1410742
+    }
+  },
+  "superseded": {
+    "ClearAuditDeployer": "0x8fcC1436147BF48eCF57C0B4609B5380E7b5756a",
+    "BountyVault": "0x283776AB6c2B139d6097285821AC5EdDe43e115e",
+    "USDCPaymaster": "0xEFFD38f3768c3A77E14424a8033c4CE3F91Fba2B",
+    "note": "v1 pair. Still on chain and still readable, but no longer the settlement target of the app."
+  },
+  "proven": [
+    {
+      "what": "Arkiv anchor gates a real payout",
+      "dealId": "0",
+      "createTx": "0xa5a6b0d2c8b2470bdc5870d2e1b6c361bd1360fe5b80ae90e7613459dc28daf6",
+      "anchorKey": "0x6035259ae5b5d71415498a5d4f1b76f3e2391145e67a300a7d3cda53087f57ef",
+      "anchorTx": "0x6137b6c0324ec574bb5a44075d86aa35b837c1738e23b83bf7950467bd5cce57",
+      "releaseTx": "0x397119504acd60270c4c2f5e53bd2053864316ed46cf98efbc6071942c4c1347",
+      "result": "status Released, 5 USDC moved to the payee in 93123 gas"
+    },
+    {
+      "what": "The gate refuses when no anchor exists",
+      "dealId": "1",
+      "createTx": "0x3038b24ce6676afec72e07498a47cb80b55b9933339c7cef0423e1fdb32aa00b",
+      "guard": "POST /api/release-guard returned 403, no live Arkiv anchor"
+    }
+  ]
+}
