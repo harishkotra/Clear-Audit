@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ActionButton } from "@/components/ui";
 
 type Status = {
   enabled: boolean;
@@ -121,7 +122,7 @@ export default function AgentDispatch({ deals }: { deals: Deal[] }) {
             </div>
 
             {open === d.id && (
-              <div className="mt-3">
+              <div key={`agent-${d.id}`} className="panel-swap mt-3">
                 <label className="label" htmlFor={`task-${d.id}`}>
                   Task for this {`deal #${d.id}`}
                 </label>
@@ -137,13 +138,15 @@ export default function AgentDispatch({ deals }: { deals: Deal[] }) {
                   <span className="text-[11px] text-zinc-600">
                     {task.length}/6000 · sent to {status.host}
                   </span>
-                  <button
-                    className="btn btn-primary h-8 px-3 text-[12px]"
+                  <ActionButton
+                    className="h-8 px-3 text-[12px]"
                     onClick={() => run(d.id)}
+                    busy={running === d.id}
+                    busyLabel="Working…"
                     disabled={running !== null || task.trim().length < 40}
                   >
-                    {running === d.id ? "Working…" : "Produce and anchor"}
-                  </button>
+                    Produce and anchor
+                  </ActionButton>
                 </div>
               </div>
             )}

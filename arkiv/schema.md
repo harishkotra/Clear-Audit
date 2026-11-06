@@ -20,6 +20,7 @@ One schema, two entity kinds, everything scoped by chain.
 | `severity` | `str` | no | `critical` \| `high` \| `medium` \| `low` |
 | `expiresAt` | `u64` | **yes** | Unix seconds, mirrored from the entity TTL so a query can filter on it |
 | `criteriaHash` | `str` | no | keccak of the acceptance-criteria text, or `0x00..00` when the deal has none. The release guard refuses if the deal's hash is set and this field does not match. |
+| `ref` | `str` | **yes** | Public short code cut from the Arkiv entity key (`CA-XXXXXXXX-YYYY`). Written at create so `/evidence?ref=…` can resolve without knowing the vault counter. Legacy anchors without this field still resolve by matching `$key`. |
 
 **Owner:** the writer wallet. No user signs an Arkiv transaction, so an entity cannot be edited by a
 company or a researcher - only created by the protocol, and only once per deal while it is live

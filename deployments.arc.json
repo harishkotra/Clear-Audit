@@ -98,6 +98,26 @@
   ],
   "proven": [
     {
+      "what": "Operator agent paid as a payee: ClearAudit produced the deliverable, anchored its sha256, and the funder released 0.20 USDC",
+      "vault": "0x9D500710df8036e4BdF38Bf9A6CA7364Cd4e26C1",
+      "dealId": "3",
+      "payee": "0x0ca5812Ca3b47b176243BD1Fd429e5460642473A",
+      "assignPayeeTx": "0x45a71df573f6958d8daf5902317d5a7ccdbc570db904430b6504b7b89cf2c561",
+      "deliverableHash": "c2006c5cd6859e4a6b26cef989e7f5fb745c1acf7f5dd19f687e709f739c6725",
+      "anchorKey": "0xcb3c7a10e682028b6331d602494cd3fef1718dd051f3d40dafd3a727e12bef52",
+      "anchorExpiresAt": 1796586158,
+      "commitEvidenceTx": "0xab60fa11960606ee1e48e92e52e7bea3a504994f6aa53c920b94d2ec1a340987",
+      "releaseTx": "0xb19ae3feced3eb8c5465274e55350b95b57011e8307663de6fd7369b8ff52fd1",
+      "settledAmount": "200000",
+      "model": "deepseek-ai/deepseek-v41-flash-1017",
+      "usage": {
+        "promptTokens": 308,
+        "completionTokens": 3187,
+        "totalTokens": 3495,
+        "latencyMs": 42405
+      }
+    },
+    {
       "what": "v4 contest award split 0.20 + 0.10 USDC",
       "vault": "0x9D500710df8036e4BdF38Bf9A6CA7364Cd4e26C1",
       "dealId": "4",

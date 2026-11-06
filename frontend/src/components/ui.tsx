@@ -1,9 +1,55 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from "react";
 import { STATUS_COPY } from "@/lib/format";
 import { ARC_EXPLORER } from "@/lib/constants";
 import { FingerprintMark, SettleMark, VaultMark } from "./icons";
+
+type ActionVariant = "primary" | "ghost" | "mint" | "plain";
+
+const VARIANT_CLASS: Record<ActionVariant, string> = {
+  primary: "btn-primary",
+  ghost: "btn-ghost",
+  mint: "btn-mint",
+  plain: "",
+};
+
+/**
+ * Wallet / async action button: press scale from `.btn`, busy spinner + label blur
+ * so the pending state feels intentional instead of a dead disabled control.
+ */
+export function ActionButton({
+  busy = false,
+  busyLabel,
+  variant = "primary",
+  className = "",
+  children,
+  disabled,
+  type = "button",
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  busy?: boolean;
+  busyLabel?: ReactNode;
+  variant?: ActionVariant;
+}) {
+  return (
+    <button
+      type={type}
+      className={`btn ${VARIANT_CLASS[variant]} ${busy ? "btn-busy" : ""} ${className}`.trim()}
+      disabled={disabled || busy}
+      aria-busy={busy || undefined}
+      {...rest}
+    >
+      <span className="btn-label">{busy && busyLabel != null ? busyLabel : children}</span>
+      {busy && <span className="btn-spinner" aria-hidden />}
+    </button>
+  );
+}
 
 export function Stat({
   label,

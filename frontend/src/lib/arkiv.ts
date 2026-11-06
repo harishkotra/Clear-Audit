@@ -2,8 +2,9 @@ import { createPublicClient, createWalletClient, ExpirationTime } from "@arkiv-n
 import type { PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk";
 import { rabdi } from "@arkiv-network/sdk/chains";
 import { defineSchema, str, addr, u64 } from "@arkiv-network/sdk/schema";
-import { http } from "viem";
+import { http, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { formatDealRef, isDealRef, normalizeDealRef, normalizeEntityKey, refMatchesKey } from "@/lib/dealRef";
 
 /**
  * Arkiv is the confidentiality layer: a zero-day report is anchored for 30 days
@@ -32,6 +33,12 @@ export const ReportSchema = defineSchema("bounty_reports", {
   expiresAt: u64(),
   /** keccak of acceptance criteria; "0x00..00" when the deal has none. */
   criteriaHash: str(),
+  /**
+   * Public short code cut from the Arkiv entity key (CA-XXXXXXXX-YYYY).
+   * Indexed so /evidence?ref=… can resolve without knowing the vault counter.
+   * Legacy anchors written before this field still resolve by matching $key.
+   */
+  ref: str().indexed().optional(),
 });
 
 export type ReportEntity = {
@@ -46,6 +53,7 @@ export type ReportEntity = {
   severity?: string | { value: string };
   expiresAt?: number | bigint | { value: number | bigint };
   criteriaHash?: string | { value: string };
+  ref?: string | { value: string };
 };
 
 /**
@@ -187,6 +195,7 @@ export async function listReports(
       severity: true,
       expiresAt: true,
       criteriaHash: true,
+      ref: true,
     },
     limit: 100,
   });
@@ -218,6 +227,64 @@ export async function findReport(
   }
 }
 
+/**
+ * Resolve a public CA- ref or a full Arkiv entity key to the live report entity.
+ * Prefers the indexed `ref` attribute; falls back to matching against $key for
+ * anchors written before that field existed.
+ */
+export async function findReportByRef(
+  raw: string,
+  chainId?: number,
+): Promise<ReportEntity | null> {
+  try {
+    const client = getArkivReader();
+    const fullKey = normalizeEntityKey(raw);
+    if (fullKey) {
+      try {
+        const entity = (await client.getEntity(fullKey, ReportSchema)) as unknown as ReportEntity;
+        return entity?.$key ? entity : null;
+      } catch {
+        return null;
+      }
+    }
+
+    const ref = normalizeDealRef(raw);
+    if (!ref) return null;
+
+    const clauses = [`kind = str('zero_day_report')`, `ref = str('${ref}')`];
+    if (chainId !== undefined) clauses.push(`chainId = u64(${chainId})`);
+
+    try {
+      const page = await client.query(clauses.join(" AND "), {
+        select: {
+          $key: true,
+          $expiresAt: true,
+          chainId: true,
+          dealId: true,
+          protocolWallet: true,
+          whitehatWallet: true,
+          amount: true,
+          encryptedPayloadHash: true,
+          severity: true,
+          expiresAt: true,
+          criteriaHash: true,
+          ref: true,
+        },
+        limit: 10,
+      });
+      const hit = (page.entities ?? [])[0] as unknown as ReportEntity | undefined;
+      if (hit?.$key) return hit;
+    } catch {
+      // Indexed ref may be absent on older entities; fall through to scan.
+    }
+
+    const entities = await listReports(undefined, chainId);
+    return entities.find((e) => refMatchesKey(ref, e.$key)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createReport(input: {
   chainId: number;
   dealId: bigint;
@@ -228,10 +295,17 @@ export async function createReport(input: {
   severity: string;
   criteriaHash?: string;
 }) {
-  const client = getArkivWriter();
+  const writer = getArkivWriter();
+  const reader = getArkivReader();
   const expiresAt = BigInt(Math.floor(Date.now() / 1000) + REPORT_RETENTION_DAYS * 86_400);
+  const owner = writer.account?.address;
+  if (!owner) throw new Error("Arkiv writer has no account.");
 
-  const result = await client.createEntity(
+  // predictEntityKeys is a read action on the public client; salt must match the create.
+  const [predicted] = await reader.predictEntityKeys({ owner, count: 1 });
+  const ref = formatDealRef(predicted.key);
+
+  const result = await writer.createEntity(
     ReportSchema,
     {
       kind: str("zero_day_report"),
@@ -244,9 +318,24 @@ export async function createReport(input: {
       severity: str(input.severity),
       expiresAt: u64(expiresAt),
       criteriaHash: str(input.criteriaHash ?? `0x${"00".repeat(32)}`),
+      ref: str(ref),
     },
-    { expiration: ExpirationTime.fromDays(REPORT_RETENTION_DAYS) },
+    {
+      expiration: ExpirationTime.fromDays(REPORT_RETENTION_DAYS),
+      salt: predicted.salt,
+    },
   );
 
-  return { ...result, expiresAt };
+  const entityKey = (result.entityKey ?? predicted.key) as Hex;
+  // If the engine minted a different key (nonce raced), still expose a correct display ref.
+  const finalRef = formatDealRef(entityKey);
+  if (finalRef !== ref) {
+    try {
+      await writer.patchEntity(ReportSchema, entityKey, { set: { ref: str(finalRef) } });
+    } catch {
+      // Display still uses finalRef; indexed lookup may need the key/scan fallback.
+    }
+  }
+
+  return { ...result, entityKey, ref: finalRef, expiresAt };
 }

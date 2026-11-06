@@ -34,9 +34,12 @@ export const PROVEN: Proven[] = [
     anchorTx: "0x35b8600d0c33bba1b3a883369137e5ab02369b747bea026660e812621c36cdaa",
   },
   {
-    what: "Agent dispatch task, unclaimed",
+    what: "Agent dispatch: ClearAudit operated as the paid agent, not as a fee",
     dealId: "3",
     createTx: "0x348fadb44982578ab82512dcddd449e20408f02def302bc7a605321894931438",
+    anchorKey: "0xcb3c7a10e682028b6331d602494cd3fef1718dd051f3d40dafd3a727e12bef52",
+    result:
+      "operator anchored the deliverable sha256, commitEvidence 0xab60fa11…0987, release 0xb19ae3fe…2fd1 paid 0.20 USDC",
   },
   {
     what: "Audit contest awarded 0.20 + 0.10 USDC to two registered entrants",

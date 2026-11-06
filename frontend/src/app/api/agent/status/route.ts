@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { agentConfig } from "@/lib/operator";
 
 /**
@@ -8,8 +8,14 @@ import { agentConfig } from "@/lib/operator";
  * one. A clone without AGENT_* variables therefore shows the feature as
  * unavailable instead of failing at the click, and the model key never appears
  * in the response.
+ *
+ * `connection()` is load-bearing: with `cacheComponents` on, a GET handler with
+ * no request input is prerendered, so the response froze at build time and kept
+ * reporting the operator as disabled after the env was filled in. Reading the
+ * request-time connection keeps this route honest.
  */
 export async function GET() {
+  await connection();
   const cfg = agentConfig();
   let host = "";
   try {

@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { isAddress, keccak256, parseUnits, toBytes } from "viem";
 import { useAccount } from "wagmi";
 import AppShell from "@/components/AppShell";
-import { Empty, ExplorerLink, Notice, SkeletonRows, StatusPill } from "@/components/ui";
+import { ActionButton, Empty, ExplorerLink, Notice, SkeletonRows, StatusPill } from "@/components/ui";
 import { useEscrow } from "@/hooks/useEscrow";
 import { useNow, useVault } from "@/hooks/useVault";
 import { useProfile } from "@/lib/profile";
@@ -55,6 +55,7 @@ export default function RewardsPage() {
   const [criteria, setCriteria] = useState("");
   const [funding, setFunding] = useState(false);
   const [notice, setNotice] = useState<{ tone: "success" | "error" | "info"; text: string; href?: string } | null>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
 
   const [openDeal, setOpenDeal] = useState<string | null>(null);
   const [reportText, setReportText] = useState("");
@@ -62,6 +63,13 @@ export default function RewardsPage() {
   const [severity, setSeverity] = useState<(typeof SEVERITIES)[number]>("high");
   const [submitting, setSubmitting] = useState(false);
   const [releasing, setReleasing] = useState<string | null>(null);
+
+  function flashDeal(id: string) {
+    setFlashId(id);
+    window.setTimeout(() => {
+      setFlashId((cur) => (cur === id ? null : cur));
+    }, 1100);
+  }
 
   const isCompany = profile?.role === "company";
   const decimals = state.token.decimals;
@@ -134,6 +142,7 @@ export default function RewardsPage() {
               : `Task #${dealId} is open. Any agent can claim it, and whoever claims is the only wallet it can pay.`,
         href: hash,
       });
+      flashDeal(String(dealId));
       setResearcher("");
       setAmount("");
       setCriteria("");
@@ -155,6 +164,7 @@ export default function RewardsPage() {
         text: `You claimed task #${dealId}. Deliver the work, anchor the hash, and the payer can release.`,
         href: hash,
       });
+      flashDeal(dealId);
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Claim failed." });
@@ -169,6 +179,7 @@ export default function RewardsPage() {
     try {
       const { hash } = await refundTask(dealId);
       setNotice({ tone: "success", text: `Task #${dealId} expired and the escrow went back to the payer.`, href: hash });
+      flashDeal(dealId);
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Refund failed." });
@@ -183,6 +194,7 @@ export default function RewardsPage() {
     try {
       const { hash } = await releaseReward(dealId);
       setNotice({ tone: "success", text: `Payment sent for reward #${dealId}.`, href: hash });
+      flashDeal(dealId);
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Payment failed." });
@@ -201,6 +213,7 @@ export default function RewardsPage() {
         text: `Reward #${dealId} is frozen for arbitration. The arbitrator can send it to exactly one party.`,
         href: hash,
       });
+      flashDeal(dealId);
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Dispute failed." });
@@ -215,6 +228,7 @@ export default function RewardsPage() {
     try {
       const { hash } = await cancelTask(dealId);
       setNotice({ tone: "success", text: `Task #${dealId} cancelled. Escrow returned to the payer.`, href: hash });
+      flashDeal(dealId);
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Cancel failed." });
@@ -233,6 +247,7 @@ export default function RewardsPage() {
         text: `Dispute on #${dealId} resolved ${toPayee ? "to the payee" : "to the payer"}.`,
         href: hash,
       });
+      flashDeal(dealId);
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Resolve failed." });
@@ -260,6 +275,7 @@ export default function RewardsPage() {
         text: `Evidence committed on chain for #${dealId}. Release now requires this fingerprint.`,
         href: hash,
       });
+      flashDeal(dealId);
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Commit failed." });
@@ -274,6 +290,7 @@ export default function RewardsPage() {
     try {
       const { hash } = await enterContest(dealId);
       setNotice({ tone: "success", text: `Entered contest #${dealId}. The judge can now award you a share.`, href: hash });
+      flashDeal(dealId);
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Entry failed." });
@@ -292,6 +309,7 @@ export default function RewardsPage() {
     try {
       const { hash } = await registerEntrant(dealId, entrant as `0x${string}`);
       setNotice({ tone: "success", text: `Registered ${shortAddress(entrant)} on contest #${dealId}.`, href: hash });
+      flashDeal(dealId);
       setEntrant("");
       await refresh();
     } catch (e: unknown) {
@@ -326,6 +344,7 @@ export default function RewardsPage() {
     try {
       const { hash } = await awardContest(dealId, winners, amounts);
       setNotice({ tone: "success", text: `Contest #${dealId} awarded.`, href: hash });
+      flashDeal(dealId);
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Award failed." });
@@ -340,6 +359,7 @@ export default function RewardsPage() {
     try {
       const { hash } = await settleAfterChallenge(dealId);
       setNotice({ tone: "success", text: `Settled #${dealId} after the challenge window.`, href: hash });
+      flashDeal(dealId);
       await refresh();
     } catch (e: unknown) {
       setNotice({ tone: "error", text: e instanceof Error ? e.message : "Settle failed." });
@@ -376,6 +396,7 @@ export default function RewardsPage() {
           ? "Finding anchored. The encrypted file was downloaded - send it to the company out-of-band."
           : "Finding anchored. Only the fingerprint left your browser.",
       });
+      flashDeal(dealId);
       setOpenDeal(null);
       setReportText("");
       setPassphrase("");
@@ -447,7 +468,7 @@ export default function RewardsPage() {
             <span className="text-[12px] text-zinc-600">{contestBoard.length} live</span>
           </div>
           {contestBoard.map((d) => (
-            <div key={d.id} className="card space-y-3 p-4">
+            <div key={d.id} className={`card space-y-3 p-4 ${flashId === d.id ? "row-flash" : ""}`}>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-[15px] font-medium text-white">{money(d.amount, decimals)} prize</div>
@@ -459,31 +480,40 @@ export default function RewardsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {!isCompany && (
-                    <button
-                      className="btn btn-mint h-8 px-3 text-[12px]"
-                      disabled={releasing === d.id || isPending}
+                    <ActionButton
+                      variant="mint"
+                      className="h-8 px-3 text-[12px]"
+                      busy={releasing === d.id}
+                      busyLabel="Entering…"
+                      disabled={isPending}
                       onClick={() => onEnter(d.id)}
                     >
-                      {releasing === d.id ? "Entering…" : "Enter"}
-                    </button>
+                      Enter
+                    </ActionButton>
                   )}
                   {isCompany && d.payer.toLowerCase() === address?.toLowerCase() && (
-                    <button
-                      className="btn btn-ghost h-8 px-3 text-[12px]"
-                      disabled={releasing === d.id || isPending || !isAddress(entrant)}
+                    <ActionButton
+                      variant="ghost"
+                      className="h-8 px-3 text-[12px]"
+                      busy={releasing === d.id}
+                      busyLabel="Registering…"
+                      disabled={isPending || !isAddress(entrant)}
                       onClick={() => onRegister(d.id)}
                     >
                       Register entrant
-                    </button>
+                    </ActionButton>
                   )}
                   {isArbitrator && (
-                    <button
-                      className="btn btn-primary h-8 px-3 text-[12px]"
-                      disabled={releasing === d.id || isPending}
+                    <ActionButton
+                      variant="primary"
+                      className="h-8 px-3 text-[12px]"
+                      busy={releasing === d.id}
+                      busyLabel="Awarding…"
+                      disabled={isPending}
                       onClick={() => onAward(d.id, d.amount)}
                     >
                       Award
-                    </button>
+                    </ActionButton>
                   )}
                 </div>
               </div>
@@ -526,7 +556,7 @@ export default function RewardsPage() {
                     setMode(m);
                     if ((m === "open" || m === "contest") && !deadlineDays) setDeadlineDays("7");
                   }}
-                  className={`flex-1 rounded-[2px] px-2 py-1.5 text-[11.5px] transition-colors ${
+                  className={`flex-1 rounded-[2px] px-2 py-1.5 text-[11.5px] transition-[background,color] duration-[160ms] ease ${
                     mode === m
                       ? "bg-[#ece7dd] text-[#0b0b0c]"
                       : "text-zinc-400 hover:text-zinc-200"
@@ -537,7 +567,7 @@ export default function RewardsPage() {
               ))}
             </div>
 
-            <div className="mt-3 space-y-3">
+            <div key={mode} className="panel-swap mt-3 space-y-3">
               {mode === "named" && (
               <div>
                 <label className="label capitalize" htmlFor="researcher">{uc.nouns.payee} wallet</label>
@@ -601,15 +631,18 @@ export default function RewardsPage() {
               </div>
             </div>
 
-            <button className="btn btn-primary mt-4 w-full" disabled={funding || isPending}>
-              {funding
-                ? "Confirm in your wallet…"
-                : mode === "named"
-                  ? `Fund ${noun}`
-                  : mode === "contest"
-                    ? `Escrow the prize`
-                    : `Open ${noun} to agents`}
-            </button>
+            <ActionButton
+              type="submit"
+              className="mt-4 w-full"
+              busy={funding || isPending}
+              busyLabel="Confirm in your wallet…"
+            >
+              {mode === "named"
+                ? `Fund ${noun}`
+                : mode === "contest"
+                  ? `Escrow the prize`
+                  : `Open ${noun} to agents`}
+            </ActionButton>
             <p className="mt-3 text-[11px] leading-relaxed text-zinc-600">
               Requires an approval and one deposit transaction. The vault holds the funds, not
               ClearAudit.
@@ -656,11 +689,22 @@ export default function RewardsPage() {
                   <tbody>
                     {mine.map((d) => {
                       const r = reportFor(d.id);
+                      const busy = releasing === d.id;
+                      const evidenceHref = r?.ref
+                        ? `/evidence?ref=${encodeURIComponent(r.ref)}`
+                        : `/evidence?dealId=${d.id}`;
                       return (
-                        <tr key={d.id}>
+                        <tr key={d.id} className={flashId === d.id ? "row-flash" : undefined}>
                           <td className="font-mono text-zinc-400">
-                            <Link href={`/evidence?dealId=${d.id}`} className="hover:text-zinc-200">
-                              #{d.id}
+                            <Link href={evidenceHref} className="hover:text-zinc-200">
+                              {r?.ref ? (
+                                <span className="block">
+                                  <span className="text-zinc-200">{r.ref}</span>
+                                  <span className="mt-0.5 block text-[10px] text-zinc-600">#{d.id}</span>
+                                </span>
+                              ) : (
+                                `#${d.id}`
+                              )}
                             </Link>
                           </td>
                           <td className="font-mono text-[12px] text-zinc-400">
@@ -683,54 +727,69 @@ export default function RewardsPage() {
                           <td className="text-right">
                             <div className="flex flex-wrap justify-end gap-1.5">
                             {d.status === 1 && d.claimedAt === 0 && (
-                              <button
+                              <ActionButton
+                                variant="plain"
                                 onClick={() => onCancel(d.id)}
-                                disabled={releasing === d.id || isPending}
-                                className="btn h-8 px-3 text-[12px] text-zinc-300"
+                                busy={busy}
+                                busyLabel="Cancelling…"
+                                disabled={isPending}
+                                className="h-8 px-3 text-[12px] text-zinc-300"
                               >
-                                {releasing === d.id ? "Cancelling…" : "Cancel"}
-                              </button>
+                                Cancel
+                              </ActionButton>
                             )}
                             {d.status === 1 && d.deadline > 0 && now > 0 && d.deadline * 1000 < now && (
-                              <button
+                              <ActionButton
+                                variant="plain"
                                 onClick={() => onRefund(d.id)}
-                                disabled={releasing === d.id || isPending}
-                                className="btn h-8 px-3 text-[12px] text-zinc-300"
+                                busy={busy}
+                                busyLabel="Refunding…"
+                                disabled={isPending}
+                                className="h-8 px-3 text-[12px] text-zinc-300"
                               >
-                                {releasing === d.id ? "Refunding…" : "Refund expired"}
-                              </button>
+                                Refund expired
+                              </ActionButton>
                             )}
                             {d.status === 1 && hasPayee(d.payee) && evidenceGate && r && !(d.evidence?.hash && d.evidence.hash !== `0x${"00".repeat(32)}`) && (
-                              <button
+                              <ActionButton
+                                variant="plain"
                                 onClick={() => onCommit(d.id)}
-                                disabled={releasing === d.id || isPending}
-                                className="btn h-8 px-3 text-[12px] text-zinc-200"
+                                busy={busy}
+                                busyLabel="Committing…"
+                                disabled={isPending}
+                                className="h-8 px-3 text-[12px] text-zinc-200"
                               >
-                                {releasing === d.id ? "Committing…" : "Commit evidence"}
-                              </button>
+                                Commit evidence
+                              </ActionButton>
                             )}
                             {d.status === 1 && hasPayee(d.payee) && (
-                              <button
+                              <ActionButton
+                                variant="mint"
                                 onClick={() => onRelease(d.id)}
-                                disabled={!r || releasing === d.id || isPending}
+                                busy={busy}
+                                busyLabel="Paying…"
+                                disabled={!r || isPending}
                                 title={
                                   r
                                     ? "Release the escrowed reward to the stored payee"
                                     : "The payee must anchor a finding before payment can be released"
                                 }
-                                className="btn btn-mint h-8 px-3 text-[12px] disabled:cursor-not-allowed"
+                                className="h-8 px-3 text-[12px] disabled:cursor-not-allowed"
                               >
-                                {releasing === d.id ? "Paying…" : r ? "Release payment" : "Anchor required"}
-                              </button>
+                                {r ? "Release payment" : "Anchor required"}
+                              </ActionButton>
                             )}
                             {d.status === 1 && hasPayee(d.payee) && (
-                              <button
+                              <ActionButton
+                                variant="ghost"
                                 onClick={() => onDispute(d.id)}
-                                disabled={releasing === d.id || isPending}
-                                className="btn btn-ghost h-8 px-3 text-[12px]"
+                                busy={busy}
+                                busyLabel="Freezing…"
+                                disabled={isPending}
+                                className="h-8 px-3 text-[12px]"
                               >
-                                {releasing === d.id ? "Freezing…" : "Dispute"}
-                              </button>
+                                Dispute
+                              </ActionButton>
                             )}
                             {evidenceGate &&
                               d.status === 1 &&
@@ -738,30 +797,39 @@ export default function RewardsPage() {
                               d.evidence.challengeUntil > 0 &&
                               now > 0 &&
                               now / 1000 >= d.evidence.challengeUntil && (
-                                <button
+                                <ActionButton
+                                  variant="mint"
                                   onClick={() => onSettle(d.id)}
-                                  disabled={releasing === d.id || isPending}
-                                  className="btn btn-mint h-8 px-3 text-[12px]"
+                                  busy={busy}
+                                  busyLabel="Settling…"
+                                  disabled={isPending}
+                                  className="h-8 px-3 text-[12px]"
                                 >
-                                  {releasing === d.id ? "Settling…" : "Settle after challenge"}
-                                </button>
+                                  Settle after challenge
+                                </ActionButton>
                               )}
                             {d.status === 2 && isArbitrator && (
                               <>
-                                <button
+                                <ActionButton
+                                  variant="mint"
                                   onClick={() => onResolve(d.id, true)}
-                                  disabled={releasing === d.id || isPending}
-                                  className="btn btn-mint h-8 px-3 text-[12px]"
+                                  busy={busy}
+                                  busyLabel="Resolving…"
+                                  disabled={isPending}
+                                  className="h-8 px-3 text-[12px]"
                                 >
                                   Pay payee
-                                </button>
-                                <button
+                                </ActionButton>
+                                <ActionButton
+                                  variant="plain"
                                   onClick={() => onResolve(d.id, false)}
-                                  disabled={releasing === d.id || isPending}
-                                  className="btn h-8 px-3 text-[12px] text-zinc-300"
+                                  busy={busy}
+                                  busyLabel="Resolving…"
+                                  disabled={isPending}
+                                  className="h-8 px-3 text-[12px] text-zinc-300"
                                 >
                                   Refund payer
-                                </button>
+                                </ActionButton>
                               </>
                             )}
                             </div>
@@ -819,7 +887,12 @@ export default function RewardsPage() {
             ) : (
               <div className="space-y-2">
                 {openBoard.map((d) => (
-                  <div key={d.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div
+                    key={d.id}
+                    className={`card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between ${
+                      flashId === d.id ? "row-flash" : ""
+                    }`}
+                  >
                     <div>
                       <div className="text-[15px] font-medium text-white">{money(d.amount, decimals)}</div>
                       <div className="text-[11.5px] text-zinc-500">
@@ -829,13 +902,16 @@ export default function RewardsPage() {
                           : ""}
                       </div>
                     </div>
-                    <button
+                    <ActionButton
+                      variant="mint"
                       onClick={() => onClaim(d.id)}
-                      disabled={releasing === d.id || isPending}
-                      className="btn btn-mint h-8 px-3 text-[12px]"
+                      busy={releasing === d.id}
+                      busyLabel="Claiming…"
+                      disabled={isPending}
+                      className="h-8 px-3 text-[12px]"
                     >
-                      {releasing === d.id ? "Claiming…" : "Claim"}
-                    </button>
+                      Claim
+                    </ActionButton>
                   </div>
                 ))}
               </div>
@@ -859,8 +935,12 @@ export default function RewardsPage() {
               {mine.map((d) => {
                 const r = reportFor(d.id);
                 const expanded = openDeal === d.id;
+                const busy = releasing === d.id;
                 return (
-                  <div key={d.id} className="card overflow-hidden">
+                  <div
+                    key={d.id}
+                    className={`card overflow-hidden ${flashId === d.id ? "row-flash" : ""}`}
+                  >
                     <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-4">
                         <div className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.03] font-mono text-[11px] text-zinc-500">
@@ -892,38 +972,47 @@ export default function RewardsPage() {
                           </span>
                         )}
                         {d.status === 1 && (
-                          <button
-                            className="btn btn-ghost h-8 px-3 text-[12px]"
+                          <ActionButton
+                            variant="ghost"
+                            className="h-8 px-3 text-[12px]"
                             onClick={() => onDispute(d.id)}
-                            disabled={releasing === d.id || isPending}
+                            busy={busy}
+                            busyLabel="Freezing…"
+                            disabled={isPending}
                             title="Freeze this reward for neutral arbitration"
                           >
-                            {releasing === d.id ? "Freezing…" : "Dispute"}
-                          </button>
+                            Dispute
+                          </ActionButton>
                         )}
                         {d.status === 2 && isArbitrator && (
                           <>
-                            <button
-                              className="btn btn-mint h-8 px-3 text-[12px]"
+                            <ActionButton
+                              variant="mint"
+                              className="h-8 px-3 text-[12px]"
                               onClick={() => onResolve(d.id, true)}
-                              disabled={releasing === d.id || isPending}
+                              busy={busy}
+                              busyLabel="Resolving…"
+                              disabled={isPending}
                             >
                               Pay payee
-                            </button>
-                            <button
-                              className="btn h-8 px-3 text-[12px] text-zinc-300"
+                            </ActionButton>
+                            <ActionButton
+                              variant="plain"
+                              className="h-8 px-3 text-[12px] text-zinc-300"
                               onClick={() => onResolve(d.id, false)}
-                              disabled={releasing === d.id || isPending}
+                              busy={busy}
+                              busyLabel="Resolving…"
+                              disabled={isPending}
                             >
                               Refund payer
-                            </button>
+                            </ActionButton>
                           </>
                         )}
                       </div>
                     </div>
 
                     {expanded && (
-                      <div className="border-t border-white/8 bg-black/20 p-4">
+                      <div key={`expand-${d.id}`} className="panel-swap border-t border-white/8 bg-black/20 p-4">
                         <div className="grid gap-3 lg:grid-cols-[1fr_260px]">
                           <div>
                             <label className="label" htmlFor={`report-${d.id}`}>
@@ -973,13 +1062,14 @@ export default function RewardsPage() {
                               ? "It is encrypted locally and you download the file to share."
                               : "Only a SHA-256 fingerprint is anchored."}
                           </p>
-                          <button
-                            className="btn btn-primary h-9 shrink-0"
-                            disabled={submitting}
+                          <ActionButton
+                            className="h-9 shrink-0"
+                            busy={submitting}
+                            busyLabel="Anchoring…"
                             onClick={() => onSubmitReport(d.id)}
                           >
-                            {submitting ? "Anchoring…" : "Anchor finding"}
-                          </button>
+                            Anchor finding
+                          </ActionButton>
                         </div>
                       </div>
                     )}

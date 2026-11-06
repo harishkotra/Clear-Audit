@@ -1,5 +1,6 @@
 import { readDeal, readEvidence, readVaultFeatures } from "@/lib/arc";
-import { anchorExpirySeconds, criteriaMatches, findReport, unwrap } from "@/lib/arkiv";
+import { anchorExpirySeconds, criteriaMatches, findReport, findReportByRef, unwrap } from "@/lib/arkiv";
+import { isDealRef, normalizeEntityKey, tryFormatDealRef } from "@/lib/dealRef";
 import { ARC_CHAIN_ID, ARC_EXPLORER, VAULT_ADDRESS } from "@/lib/constants";
 import { PROVEN, ZERO_ADDRESS } from "@/lib/proven";
 
@@ -17,6 +18,8 @@ export type EvidencePayload = {
   vault: string;
   explorer: string;
   dealId: string;
+  /** Public Arkiv-derived code, when an anchor exists. */
+  ref: string | null;
   features: { evidenceGate: boolean; challengeWindow: number };
   deal: {
     id: string;
@@ -33,6 +36,7 @@ export type EvidencePayload = {
   evidence: { hash: `0x${string}`; expiresAt: number; challengeUntil: number } | null;
   arkiv: {
     key: string;
+    ref: string | null;
     protocolWallet: string | null;
     whitehatWallet: string | null;
     amount: string;
@@ -47,19 +51,44 @@ export type EvidencePayload = {
   proven: typeof PROVEN[number][];
 };
 
+/**
+ * Load evidence by vault counter (`3`), public ref (`CA-CB3C7A10-EF52`),
+ * or full Arkiv entity key.
+ */
 export async function loadEvidence(raw: string): Promise<EvidencePayload> {
-  if (!/^\d+$/.test(raw)) {
-    throw new Error("dealId must be a non-negative integer");
+  const trimmed = raw.trim();
+  let dealId: bigint;
+  let reportFromRef = null as Awaited<ReturnType<typeof findReportByRef>>;
+
+  if (/^\d+$/.test(trimmed)) {
+    dealId = BigInt(trimmed);
+  } else if (isDealRef(trimmed) || normalizeEntityKey(trimmed)) {
+    reportFromRef = await findReportByRef(trimmed, ARC_CHAIN_ID);
+    if (!reportFromRef) {
+      throw new Error("No live Arkiv anchor matches that reference.");
+    }
+    const idRaw = unwrap(reportFromRef.dealId);
+    if (idRaw === undefined || idRaw === null) {
+      throw new Error("Arkiv anchor is missing a dealId.");
+    }
+    dealId = BigInt(String(idRaw));
+  } else {
+    throw new Error("Use a deal number (3), a CA- ref, or a full Arkiv entity key.");
   }
 
-  const dealId = BigInt(raw);
   const [deal, features] = await Promise.all([readDeal(dealId), readVaultFeatures()]);
   const evidence = features.evidenceGate ? await readEvidence(dealId) : null;
-  const report = await findReport(dealId, ARC_CHAIN_ID, {
-    amount: deal.amount.toString(),
-    payer: deal.payer,
-    payee: deal.payee === ZERO_ADDRESS ? undefined : deal.payee,
-  });
+  const report =
+    reportFromRef ??
+    (await findReport(dealId, ARC_CHAIN_ID, {
+      amount: deal.amount.toString(),
+      payer: deal.payer,
+      payee: deal.payee === ZERO_ADDRESS ? undefined : deal.payee,
+    }));
+  const ref =
+    (report ? (unwrap(report.ref) as string | undefined) : null) ??
+    tryFormatDealRef(report?.$key) ??
+    null;
 
   const reasons: string[] = [];
   let verdict: EvidenceVerdict = "missing";
@@ -115,6 +144,7 @@ export async function loadEvidence(raw: string): Promise<EvidencePayload> {
     vault: VAULT_ADDRESS,
     explorer: ARC_EXPLORER,
     dealId: String(dealId),
+    ref,
     features,
     deal: {
       id: deal.id,
@@ -132,6 +162,7 @@ export async function loadEvidence(raw: string): Promise<EvidencePayload> {
     arkiv: report
       ? {
           key: report.$key,
+          ref,
           protocolWallet: unwrap(report.protocolWallet) ?? null,
           whitehatWallet: unwrap(report.whitehatWallet) ?? null,
           amount: String(unwrap(report.amount) ?? ""),
@@ -143,11 +174,17 @@ export async function loadEvidence(raw: string): Promise<EvidencePayload> {
       : null,
     verdict,
     reasons,
-    query: [
-      "kind = str('zero_day_report')",
-      `chainId = u64(${ARC_CHAIN_ID})`,
-      `dealId = u64(${dealId.toString()})`,
-    ].join(" AND "),
+    query: ref
+      ? [
+          "kind = str('zero_day_report')",
+          `chainId = u64(${ARC_CHAIN_ID})`,
+          `ref = str('${ref}')`,
+        ].join(" AND ")
+      : [
+          "kind = str('zero_day_report')",
+          `chainId = u64(${ARC_CHAIN_ID})`,
+          `dealId = u64(${dealId.toString()})`,
+        ].join(" AND "),
     proven: PROVEN.filter((p) => p.dealId === String(dealId)),
   };
 }

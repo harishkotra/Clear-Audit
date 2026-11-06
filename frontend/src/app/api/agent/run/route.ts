@@ -108,7 +108,7 @@ export async function POST(req: Request) {
 
   const hash = createHash("sha256").update(run.content, "utf8").digest("hex");
 
-  let anchor: { $key?: string; expiresAt: bigint } | null = null;
+  let anchor: { entityKey?: string; txHash?: string; expiresAt: bigint } | null = null;
   let anchorError: string | null = null;
   try {
     anchor = await createReport({
@@ -134,7 +134,8 @@ export async function POST(req: Request) {
     // The hash is what the gate compares, not the prose.
     hash,
     anchored: anchor !== null,
-    anchorKey: anchor?.$key ?? null,
+    anchorKey: anchor?.entityKey ?? null,
+    anchorTx: anchor?.txHash ?? null,
     anchorExpiresAt: anchor ? Number(anchor.expiresAt) : null,
     anchorError,
     model: run.model,

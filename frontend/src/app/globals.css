@@ -111,6 +111,32 @@ body {
     opacity: 0.4;
     pointer-events: none;
   }
+  /* Busy buttons stay fully visible so the spinner reads as progress, not disabled */
+  .btn.btn-busy:disabled,
+  .btn[aria-busy="true"] {
+    opacity: 1;
+    pointer-events: none;
+    cursor: wait;
+  }
+  .btn-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: filter 200ms ease, opacity 200ms ease;
+  }
+  .btn-busy .btn-label {
+    filter: blur(2px);
+    opacity: 0.72;
+  }
+  .btn-spinner {
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 1.5px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 999px;
+    flex-shrink: 0;
+    animation: spin 0.7s linear infinite;
+  }
 
   .btn-primary {
     background: var(--color-brand-500);
@@ -328,6 +354,65 @@ details[open] > .faq-panel > .faq-panel-inner {
   animation: gate-pulse 2.4s linear infinite;
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mode / step content swap (fund form, onboarding) */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.panel-swap {
+  animation: panel-in var(--duration-ui) var(--motion-ease-out) both;
+}
+
+/* Brief mint flash on a deal row after a successful action */
+@keyframes row-flash {
+  0% {
+    background: rgba(139, 209, 124, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(139, 209, 124, 0.45);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+}
+
+.row-flash {
+  animation: row-flash 1.1s var(--motion-ease-out) both;
+}
+
+/* Onboarding step dots */
+.step-dot {
+  height: 0.35rem;
+  width: 0.35rem;
+  border-radius: 999px;
+  background: rgba(236, 231, 221, 0.2);
+  transition:
+    background var(--duration-ui) var(--motion-ease-out),
+    transform var(--duration-ui) var(--motion-ease-out),
+    width var(--duration-ui) var(--motion-ease-out);
+}
+.step-dot[data-active="true"] {
+  width: 1.1rem;
+  background: var(--color-brand-500);
+}
+.step-dot[data-done="true"] {
+  background: rgba(139, 209, 124, 0.7);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -335,17 +420,22 @@ details[open] > .faq-panel > .faq-panel-inner {
   .rise,
   .notice-enter,
   .verdict-enter,
-  .gate-live {
+  .gate-live,
+  .panel-swap,
+  .row-flash,
+  .btn-spinner {
     animation: none !important;
     transform: none !important;
+    filter: none !important;
   }
   .notice-enter,
   .faq-panel,
-  .faq-panel-inner {
+  .faq-panel-inner,
+  .btn-label,
+  .step-dot {
     transition: opacity 160ms ease !important;
   }
   .faq-panel {
-    /* Instant open still works via grid; skip animated row morph */
     transition: none !important;
   }
   .skeleton {
@@ -353,5 +443,9 @@ details[open] > .faq-panel > .faq-panel-inner {
   }
   .btn:active:not(:disabled) {
     transform: none;
+  }
+  .btn-busy .btn-label {
+    filter: none;
+    opacity: 0.85;
   }
 }

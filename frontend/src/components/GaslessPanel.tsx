@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Notice } from "@/components/ui";
+import { ActionButton, Notice } from "@/components/ui";
 import { DEVNET_EXPLORER } from "@/lib/constants";
 
 type OpenDeal = { id: string; amount: string; whitehat: string };
@@ -104,18 +104,31 @@ export function GaslessPanel({ open }: { open: OpenDeal[] }) {
             ))}
           </select>
         </label>
-        <button className="btn btn-ghost h-10" onClick={anchor} disabled={busy !== null}>
-          {busy === "anchor" ? "Anchoring…" : "1. Anchor evidence"}
-        </button>
-        <button className="btn btn-primary h-10" onClick={claim} disabled={busy !== null}>
-          {busy === "claim" ? "Settling…" : "2. Release gaslessly"}
-        </button>
+        <ActionButton
+          variant="ghost"
+          className="h-10"
+          onClick={anchor}
+          busy={busy === "anchor"}
+          busyLabel="Anchoring…"
+          disabled={busy !== null && busy !== "anchor"}
+        >
+          1. Anchor evidence
+        </ActionButton>
+        <ActionButton
+          className="h-10"
+          onClick={claim}
+          busy={busy === "claim"}
+          busyLabel="Settling…"
+          disabled={busy !== null && busy !== "claim"}
+        >
+          2. Release gaslessly
+        </ActionButton>
       </div>
 
       {note && <Notice tone={note.tone}>{note.text}</Notice>}
 
       {receipt && (
-        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-3.5">
+        <div className="panel-swap rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-3.5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-[12px] font-medium text-emerald-300">
               Transaction {receipt.status === "0x1" ? "succeeded" : `status ${receipt.status ?? "?"}`}

@@ -48,16 +48,17 @@ function EvidenceFallback() {
   return (
     <>
       <form className="mt-8 flex flex-wrap items-end gap-3" action="/evidence" method="get">
-        <div>
+        <div className="min-w-[220px] flex-1">
           <label className="label" htmlFor="dealId">
-            Deal id
+            Deal # or CA- ref
           </label>
           <input
             id="dealId"
             name="dealId"
-            className="field w-32 font-mono"
+            className="field w-full font-mono"
             defaultValue="0"
-            inputMode="numeric"
+            placeholder="3 or CA-CB3C7A10-EF52"
+            spellCheck={false}
           />
         </div>
         <button className="btn btn-primary h-10" type="submit">
@@ -72,34 +73,36 @@ function EvidenceFallback() {
 async function EvidenceBody({
   searchParams,
 }: {
-  searchParams: Promise<{ dealId?: string }>;
+  searchParams: Promise<{ dealId?: string; ref?: string }>;
 }) {
   const sp = await searchParams;
-  const dealId = /^\d+$/.test(sp.dealId ?? "") ? (sp.dealId as string) : "0";
+  const lookup = (sp.ref?.trim() || sp.dealId?.trim() || "0");
   let data: Awaited<ReturnType<typeof loadEvidence>> | null = null;
   let error: string | null = null;
   try {
-    data = await loadEvidence(dealId);
+    data = await loadEvidence(lookup);
   } catch (e: unknown) {
     error = e instanceof Error ? e.message : "Could not read evidence.";
   }
 
   const now = Date.now();
   const copy = data ? VERDICT_COPY[data.verdict] : null;
+  const formDefault = data?.ref ?? lookup;
 
   return (
     <>
         <form className="mt-8 flex flex-wrap items-end gap-3" action="/evidence" method="get">
-          <div>
+          <div className="min-w-[220px] flex-1">
             <label className="label" htmlFor="dealId">
-              Deal id
+              Deal # or CA- ref
             </label>
             <input
               id="dealId"
               name="dealId"
-              className="field w-32 font-mono"
-              defaultValue={dealId}
-              inputMode="numeric"
+              className="field w-full font-mono"
+              defaultValue={formDefault}
+              placeholder="3 or CA-CB3C7A10-EF52"
+              spellCheck={false}
             />
           </div>
           <button className="btn btn-primary h-10" type="submit">
@@ -115,9 +118,18 @@ async function EvidenceBody({
 
         {data && copy && (
           <div className="verdict-enter mt-8 space-y-6">
-            <div className={`inline-flex items-center gap-2 border px-3 py-1.5 text-[12px] ${copy.tone}`}>
-              <span className="font-mono uppercase tracking-[0.12em]">{copy.label}</span>
-              <span className="text-[#8d887f]">deal #{data.dealId}</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className={`inline-flex items-center gap-2 border px-3 py-1.5 text-[12px] ${copy.tone}`}>
+                <span className="font-mono uppercase tracking-[0.12em]">{copy.label}</span>
+                <span className="text-[#8d887f]">vault #{data.dealId}</span>
+              </div>
+              {data.ref && (
+                <div className="inline-flex items-center gap-2 border border-[var(--rule)] bg-white/[0.03] px-3 py-1.5 font-mono text-[12px] text-[#ece7dd]">
+                  <span className="text-[#8d887f]">ref</span>
+                  <span>{data.ref}</span>
+                  <CopyButton text={data.ref} />
+                </div>
+              )}
             </div>
             <ul className="space-y-1 text-[13.5px] leading-relaxed text-[#c9c3b8]">
               {data.reasons.map((r) => (
@@ -153,6 +165,7 @@ async function EvidenceBody({
                 <div className="micro">Arkiv · Rabdi 7794095</div>
                 {data.arkiv ? (
                   <dl className="mt-3 space-y-2 text-[12.5px]">
+                    <Row k="Ref" v={data.arkiv.ref ?? "—"} />
                     <Row k="Entity" v={shortAddress(data.arkiv.key)} />
                     <Row k="Severity" v={data.arkiv.severity ?? "—"} />
                     <Row

@@ -40,6 +40,8 @@ export type VaultState = {
 
 export type Report = {
   key: string;
+  /** Public CA- code derived from the Arkiv entity key. */
+  ref?: string | null;
   dealId: string;
   protocolWallet: string | null;
   whitehatWallet: string | null;

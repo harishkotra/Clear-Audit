@@ -7,6 +7,7 @@ import {
   listReports,
   unwrap,
 } from "@/lib/arkiv";
+import { formatDealRef, tryFormatDealRef } from "@/lib/dealRef";
 import { readDeal } from "@/lib/arc";
 import { readDevnetDeal } from "@/lib/devnet";
 import { ARC_CHAIN_ID, DEVNET_CHAIN_ID } from "@/lib/constants";
@@ -38,18 +39,24 @@ export async function GET(req: Request) {
     }
 
     const entities = await listReports(dealId, chainId);
-    const reports = entities.map((e) => ({
-      key: e.$key,
-      chainId: Number(unwrap(e.chainId) ?? chainId),
-      dealId: String(unwrap(e.dealId) ?? ""),
-      protocolWallet: unwrap(e.protocolWallet) ?? null,
-      whitehatWallet: unwrap(e.whitehatWallet) ?? null,
-      amount: String(unwrap(e.amount) ?? ""),
-      encryptedPayloadHash: unwrap(e.encryptedPayloadHash) ?? null,
-      severity: unwrap(e.severity) ?? null,
-      criteriaHash: unwrap(e.criteriaHash) ?? null,
-      expiresAt: anchorExpirySeconds(e) !== null ? String(anchorExpirySeconds(e)) : null,
-    }));
+    const reports = entities.map((e) => {
+      const key = e.$key;
+      const stored = unwrap(e.ref) as string | undefined;
+      const ref = stored ?? tryFormatDealRef(key);
+      return {
+        key,
+        ref,
+        chainId: Number(unwrap(e.chainId) ?? chainId),
+        dealId: String(unwrap(e.dealId) ?? ""),
+        protocolWallet: unwrap(e.protocolWallet) ?? null,
+        whitehatWallet: unwrap(e.whitehatWallet) ?? null,
+        amount: String(unwrap(e.amount) ?? ""),
+        encryptedPayloadHash: unwrap(e.encryptedPayloadHash) ?? null,
+        severity: unwrap(e.severity) ?? null,
+        criteriaHash: unwrap(e.criteriaHash) ?? null,
+        expiresAt: anchorExpirySeconds(e) !== null ? String(anchorExpirySeconds(e)) : null,
+      };
+    });
 
     return NextResponse.json({ reports });
   } catch (e: unknown) {
@@ -149,6 +156,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       entityKey: result.entityKey,
+      ref: result.ref ?? (result.entityKey ? formatDealRef(result.entityKey) : null),
       txHash: result.txHash,
       expiresAt: result.expiresAt.toString(),
     });
