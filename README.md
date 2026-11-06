@@ -177,9 +177,16 @@ see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Foundry tests need `forge instal
 ## Using the app
 
 Every screen under `/app` is a wallet view, so the app asks for a wallet first and shows nothing
-until one is connected. One **Connect wallet** button: an injected wallet is used when the browser has
-one, WalletConnect when it does not and a project id is configured. Nothing is stored on a server —
-the connected address is the identity, and the optional display profile lives in `localStorage`.
+until one is signed in. Sign-in goes through **Privy**: one **Connect wallet** button opens Privy's
+modal, which offers whichever wallets the visitor actually has (browser extension, mobile app, or an
+embedded wallet Privy creates for email sign-ups) and keeps a single session across all of them. We
+render no wallet picker of our own, so there is no per-extension handshake to debug. Nothing about a
+deal is stored on a server — the signed-in address is the identity, and the optional display profile
+lives in `localStorage`.
+
+Configure it with `NEXT_PUBLIC_PRIVY_APP_ID` in `frontend/.env.local` (the app id from the Privy
+dashboard — a public identifier, not the app secret). It is inlined at build time, so rebuild after
+changing it. Without it the site still renders and `/app` says the wallet layer is unconfigured.
 
 ## Research artifacts
 

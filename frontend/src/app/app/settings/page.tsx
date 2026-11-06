@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAccount, useDisconnect } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
+import { useAccount } from "wagmi";
 import AppShell from "@/components/AppShell";
 import ConnectButton from "@/components/ConnectButton";
 import { ExplorerLink, Notice } from "@/components/ui";
@@ -13,7 +14,7 @@ import { shortAddress } from "@/lib/format";
 export default function SettingsPage() {
   const { profile, hydrated, save } = useProfile();
   const { address, chainId } = useAccount();
-  const { disconnect } = useDisconnect();
+  const { logout } = usePrivy();
   const { state } = useVault();
 
   const [name, setName] = useState("");
@@ -131,7 +132,7 @@ export default function SettingsPage() {
                     <Notice tone="error">Wrong network. Switch to Arc Testnet to transact.</Notice>
                   </div>
                 )}
-                <button onClick={() => disconnect()} className="btn btn-ghost mt-3 w-full">
+                <button onClick={() => logout()} className="btn btn-ghost mt-3 w-full">
                   Disconnect
                 </button>
               </>

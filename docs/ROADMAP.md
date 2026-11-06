@@ -80,7 +80,7 @@
 - Transaction state machine: idle → simulating → signing → pending → confirmed/failed, with
   explorer links and decoded errors.
 - Empty, loading, and error states designed, not defaulted.
-- Works on mobile; wallet connect via injected + WalletConnect + embedded wallet.
+- Works on mobile; wallet connect via Privy (extension, mobile app, or embedded wallet).
 - Accessible (keyboard, contrast, focus), fast (server components where possible).
 - A landing page that explains the product in 10 seconds and shows a live program.
 

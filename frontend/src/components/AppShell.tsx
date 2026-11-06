@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAccount } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
 import { useEffect, useState, type ReactNode } from "react";
 import Brand from "./Brand";
 import ConnectButton from "./ConnectButton";
 import { BoltIcon, GiftIcon, HomeIcon, PayoutIcon, SettingsIcon, ArrowUpRight } from "./icons";
 import { useProfile, ROLE_LABEL } from "@/lib/profile";
+import { PRIVY_ENABLED } from "@/lib/privy";
 
 const NAV = [
   { href: "/app", label: "Overview", icon: HomeIcon },
@@ -17,7 +18,7 @@ const NAV = [
   { href: "/app/settings", label: "Settings", icon: SettingsIcon },
 ];
 
-export default function AppShell({
+function AppShellInner({
   children,
   title,
   subtitle,
@@ -30,7 +31,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const { profile, clear } = useProfile();
-  const { isConnected, isConnecting, isReconnecting } = useAccount();
+  const { ready, authenticated, login } = usePrivy();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   // Wallets refuse to inject into, or answer requests from, a plain-HTTP origin
@@ -46,7 +47,7 @@ export default function AppShell({
 
   // Render nothing until the wallet state is known, so neither the gate nor the
   // page flashes for a returning user whose connector is still reconnecting.
-  if (!mounted) {
+  if (!mounted || !ready) {
     return <div className="min-h-screen bg-[#08090d]" />;
   }
 
@@ -55,7 +56,7 @@ export default function AppShell({
   // Rendering the gate instead of the page is the whole rule — no per-page
   // guards to forget, and the page's own markup is never sent to a browser
   // that has no wallet connected.
-  if (!isConnected) {
+  if (!authenticated) {
     return (
       <div className="min-h-screen bg-[#08090d]">
         <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col justify-center px-6 py-16">
@@ -64,9 +65,10 @@ export default function AppShell({
             Connect a wallet to continue
           </h1>
           <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-500">
-            {isConnecting || isReconnecting
-              ? "Reconnecting to your wallet…"
-              : "Every screen behind this point is a wallet view: the payouts you can settle, the rewards you can release, and the devnet settlement you can trigger. Nothing is stored on a server, so there is no account to sign into."}
+            Every screen behind this point is a wallet view: the payouts you can
+            settle, the rewards you can release, and the devnet settlement you can
+            trigger. Signing in creates a Privy session — no email is required, and
+            nothing about your deals is stored on our side.
           </p>
           {insecureOrigin && (
             <div className="mt-5 rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-3.5 py-2.5 text-[11.5px] leading-relaxed text-amber-300">
@@ -78,7 +80,9 @@ export default function AppShell({
             </div>
           )}
           <div className="mt-6">
-            <ConnectButton full />
+            <button className="btn btn-primary w-full" onClick={() => login()} disabled={!ready}>
+              {ready ? "Connect wallet" : "Loading…"}
+            </button>
           </div>
           <div className="mt-6 rounded-xl border border-white/8 bg-white/[0.03] p-3.5 text-[11.5px] leading-relaxed text-zinc-500">
             <span className="font-medium text-zinc-300">Which network?</span> The app runs on{" "}
@@ -87,9 +91,6 @@ export default function AppShell({
             research artifact on the gasless page. Connecting switches nothing until you ask it to.
           </div>
           <div className="mt-8 flex items-center gap-4 text-[12px]">
-            <Link href="/connect-check" className="text-zinc-500 underline decoration-white/20 underline-offset-4 hover:text-zinc-300">
-              Wallet not connecting? Run a check
-            </Link>
             <Link href="/" className="text-zinc-600 hover:text-zinc-400">
               ← Back to the site
             </Link>
@@ -201,4 +202,35 @@ export default function AppShell({
       </div>
     </div>
   );
+}
+
+/**
+ * Privy mounts the wallet layer, so without an app id there is no `usePrivy`
+ * to call. Branch on the flag rather than mounting a half-initialised provider:
+ * `/app` says what is missing and the rest of the site keeps working.
+ */
+export default function AppShell(props: {
+  children: ReactNode;
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+}) {
+  if (!PRIVY_ENABLED) {
+    return (
+      <div className="min-h-screen bg-[#08090d]">
+        <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col justify-center px-6 py-16">
+          <Brand />
+          <h1 className="mt-10 text-[24px] font-semibold tracking-[-0.02em] text-white">
+            Wallet layer not configured
+          </h1>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-500">
+            Set <span className="font-mono text-zinc-300">NEXT_PUBLIC_PRIVY_APP_ID</span> in{" "}
+            <span className="font-mono text-zinc-300">frontend/.env.local</span> and rebuild. The id is
+            public — it is the app id from the Privy dashboard, not the app secret.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return <AppShellInner {...props} />;
 }

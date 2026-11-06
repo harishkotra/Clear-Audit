@@ -1,176 +1,106 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
+import { useAccount, useSwitchChain } from "wagmi";
 import { ARC_CHAIN_ID } from "@/lib/constants";
 import { shortAddress } from "@/lib/format";
+import { PRIVY_ENABLED } from "@/lib/privy";
 
 /**
- * One button, everywhere. The connector is chosen from what the browser has: an
- * extension if it injected `window.ethereum`, WalletConnect otherwise.
+ * One button, everywhere.
  *
- * Deliberately *not* a chain of fallbacks: retrying an extension's refusal over
- * WalletConnect opens a QR modal the user did not ask for, and on desktop that
- * looks like the button did nothing. One attempt, then a readable error.
+ * Privy owns the login: it renders its own modal with every wallet the visitor
+ * actually has (extension, mobile, or an embedded wallet created on sign-up),
+ * and one session covers all of them. We therefore render *no* wallet picker of
+ * our own — no connector list, no per-extension handshake, none of the
+ * `-32603` / `[object Object]` failure modes that came with it.
  */
-function pick(connectors: ReturnType<typeof useConnect>["connectors"]) {
-  const injected = connectors.filter((c) => c.id !== "walletConnect");
-  const walletConnectConnector = connectors.find((c) => c.id === "walletConnect");
-  const hasInjectedProvider =
-    typeof window !== "undefined" && Boolean((window as { ethereum?: unknown }).ethereum);
-  if (hasInjectedProvider && injected.length > 0) return injected[0];
-  return walletConnectConnector ?? injected[0] ?? connectors[0];
-}
 
-/**
- * Wallet error strings are terse and often untrue to the user's situation.
- * "-32603: An internal error has occurred" is a locked extension, a second
- * extension shadowing `window.ethereum`, or an origin the wallet refuses.
- */
 function describe(e: unknown): string {
-  if (e instanceof Error) {
-    const rich = e as Error & { shortMessage?: string; details?: string; code?: unknown };
-    return rich.shortMessage ?? rich.message ?? rich.details ?? "The wallet returned an empty error.";
-  }
+  if (e instanceof Error) return e.message;
   if (e && typeof e === "object") {
-    const record = e as { message?: unknown; code?: unknown };
+    const record = e as { message?: unknown };
     if (typeof record.message === "string") return record.message;
-    try {
-      return JSON.stringify(e);
-    } catch {
-      return "The wallet returned an unreadable error.";
-    }
   }
   return String(e);
 }
 
-function explain(raw: string) {
-  if (/internal error|-32603/i.test(raw)) {
-    return "The wallet refused the request (internal error). Unlock it, close other wallet extensions, and retry — wallets only allow connections over https or localhost.";
-  }
-  if (/user rejected|denied|cancel/i.test(raw)) return "Connection cancelled in the wallet.";
-  return raw;
-}
-
-export default function ConnectButton({ full = false }: { full?: boolean }) {
-  const { address, isConnected, chainId } = useAccount();
-  const { connectAsync, connectors, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
+function ConnectButtonInner({ full = false }: { full?: boolean }) {
+  const { ready, authenticated, login, logout, user } = usePrivy();
+  const { address, chainId } = useAccount();
   const { switchChainAsync, isPending: switching } = useSwitchChain();
-  const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const [failedConnector, setFailedConnector] = useState<string | null>(null);
-
-  async function connectAny() {
-    const connector = pick(connectors);
-    if (!connector) {
-      setFailure("No wallet is available in this browser. Install one, or set a WalletConnect project id.");
-      return;
-    }
-    setBusy(true);
-    setFailure(null);
-    try {
-      await connectAsync({ connector });
-    } catch (e: unknown) {
-      setFailure(`${connector.name}: ${explain(describe(e))}`);
-      setFailedConnector(connector.id);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   const cls = full ? "btn btn-primary w-full" : "btn btn-primary";
-  // Offered only after an injected wallet has refused: a wallet that cannot
-  // answer EIP-1193 still works through the mobile app over WalletConnect.
-  const wcAvailable = connectors.find((c) => c.id === "walletConnect");
+  // Privy reports the authenticated account even before wagmi catches up, so
+  // fall back to it rather than flashing "Connect wallet" on reload.
+  const walletAddress =
+    address ?? (user?.wallet?.address as `0x${string}` | undefined);
 
-  if (isConnected && chainId !== ARC_CHAIN_ID) {
+  if (walletAddress && chainId !== undefined && chainId !== ARC_CHAIN_ID) {
     return (
       <div className={full ? "w-full" : "flex flex-col items-end gap-1"}>
         <button
           className={cls}
+          disabled={switching}
           onClick={async () => {
-            const hexChainId = `0x${ARC_CHAIN_ID.toString(16)}`;
+            setFailure(null);
             try {
               await switchChainAsync({ chainId: ARC_CHAIN_ID });
-            } catch {
-              // 4902 / unrecognised chain: the wallet does not know Arc yet.
-              try {
-                await (window as { ethereum?: { request: (a: unknown) => Promise<unknown> } }).ethereum?.request({
-                  method: "wallet_addEthereumChain",
-                  params: [
-                    {
-                      chainId: hexChainId,
-                      chainName: "Arc Testnet",
-                      nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
-                      rpcUrls: ["https://rpc.testnet.arc.io"],
-                      blockExplorerUrls: ["https://explorer.testnet.arc.io"],
-                    },
-                  ],
-                });
-                await switchChainAsync({ chainId: ARC_CHAIN_ID });
-              } catch (e: unknown) {
-                setFailure(explain(describe(e)));
-              }
+            } catch (e: unknown) {
+              setFailure(describe(e).split("\n")[0].slice(0, 120));
             }
           }}
-          disabled={switching}
         >
           {switching ? "Switching…" : "Switch to Arc"}
         </button>
         {failure && (
           <span className={`${full ? "" : "text-right"} text-[10.5px] leading-snug text-red-400/90`}>
-            {failure.split("\n")[0].slice(0, 120)}
+            {failure}
           </span>
         )}
       </div>
     );
   }
 
-  if (isConnected) {
+  if (authenticated && walletAddress) {
     return (
       <button
-        onClick={() => disconnect()}
-        title={`${address} — click to disconnect`}
+        onClick={() => {
+          // Clears the Privy session too, so the embedded wallet is detached
+          // rather than left active behind a disconnected-looking header.
+          void logout();
+        }}
+        title={`${walletAddress} — click to sign out`}
         className={`${full ? "btn btn-ghost w-full" : "btn btn-ghost"} font-mono text-xs`}
       >
-        {shortAddress(address)}
+        {shortAddress(walletAddress)}
       </button>
     );
   }
 
   return (
     <div className={full ? "w-full" : "flex flex-col items-end gap-1"}>
-      <button
-        className={cls}
-        onClick={connectAny}
-        disabled={busy || isPending || connectors.length === 0}
-      >
-        {busy || isPending ? "Connecting…" : "Connect wallet"}
+      <button className={cls} onClick={() => login()} disabled={!ready}>
+        {ready ? "Connect wallet" : "Loading…"}
       </button>
       {failure && (
         <span className={`${full ? "" : "text-right"} text-[10.5px] leading-snug text-red-400/90`}>
-          {failure.split("\n")[0].slice(0, 120)}
+          {failure}
         </span>
-      )}
-      {failure && wcAvailable && failedConnector !== wcAvailable.id && (
-        <button
-          onClick={async () => {
-            setBusy(true);
-            setFailure(null);
-            try {
-              await connectAsync({ connector: wcAvailable });
-            } catch (e: unknown) {
-              setFailure(`${wcAvailable.name}: ${explain(describe(e))}`);
-            } finally {
-              setBusy(false);
-            }
-          }}
-          className={`${full ? "" : "self-end"} text-[10.5px] text-zinc-500 underline decoration-white/20 underline-offset-4 hover:text-zinc-300`}
-        >
-          Use WalletConnect instead
-        </button>
       )}
     </div>
   );
+}
+
+export default function ConnectButton({ full = false }: { full?: boolean }) {
+  if (!PRIVY_ENABLED) {
+    return (
+      <button className={full ? "btn btn-primary w-full" : "btn btn-primary"} disabled>
+        Wallet not configured
+      </button>
+    );
+  }
+  return <ConnectButtonInner full={full} />;
 }
