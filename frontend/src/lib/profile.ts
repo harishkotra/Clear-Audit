@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react";
 
+import type { UseCaseId } from "./usecases";
+
 export type Role = "company" | "researcher";
 
 export type Profile = {
   name: string;
   email: string;
   role: Role;
+  /** What this workspace settles; drives the app's nouns and guidance. */
+  useCase?: UseCaseId;
   createdAt: string;
 };
 

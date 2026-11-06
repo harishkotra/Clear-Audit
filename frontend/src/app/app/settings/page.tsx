@@ -8,6 +8,7 @@ import AppShell from "@/components/AppShell";
 import ConnectButton from "@/components/ConnectButton";
 import { ExplorerLink, Notice } from "@/components/ui";
 import { useProfile, ROLE_LABEL, type Role } from "@/lib/profile";
+import { USE_CASES, type UseCaseId } from "@/lib/usecases";
 import { useVault } from "@/hooks/useVault";
 import { shortAddress } from "@/lib/format";
 
@@ -20,6 +21,7 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("researcher");
+  const [useCase, setUseCase] = useState<UseCaseId>("bug-bounty");
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -28,12 +30,13 @@ export default function SettingsPage() {
     setName(profile.name);
     setEmail(profile.email);
     setRole(profile.role);
+    setUseCase(profile.useCase ?? "bug-bounty");
   }, [profile]);
 
   function onSave(e: React.FormEvent) {
     e.preventDefault();
     if (!profile) return;
-    save({ ...profile, name: name.trim() || profile.name, email: email.trim(), role });
+    save({ ...profile, name: name.trim() || profile.name, email: email.trim(), role, useCase });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -102,6 +105,30 @@ export default function SettingsPage() {
                   <span className="block text-[11px] text-zinc-500">
                     {r === "company" ? "Fund rewards and release payments" : "Submit findings and get paid"}
                   </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <span className="label">What you settle</span>
+            <p className="mb-2 text-[11.5px] leading-relaxed text-zinc-500">
+              Changes the wording across the workspace. It does not change the contract.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {USE_CASES.map((u) => (
+                <button
+                  type="button"
+                  key={u.id}
+                  onClick={() => setUseCase(u.id)}
+                  className={`rounded-lg border px-3 py-2.5 text-left text-[12.5px] transition ${
+                    useCase === u.id
+                      ? "border-brand-500/50 bg-brand-500/[0.07] text-white"
+                      : "border-white/8 text-zinc-400 hover:border-white/20"
+                  }`}
+                >
+                  <span className="block font-medium">{u.label}</span>
+                  <span className="block text-[11px] leading-snug text-zinc-500">{u.title}</span>
                 </button>
               ))}
             </div>

@@ -5,16 +5,19 @@ auto-expiring evidence record matches the terms — so a pseudonymous party can 
 platform vouching for them. Bug bounties are the demo; the rail is the product
 ([`docs/POSITIONING.md`](docs/POSITIONING.md)).
 
-Companies fund a reward in USDC. A researcher submits a finding that never leaves their browser.
-When the finding is accepted, the money is already on-chain and moves in one transaction — no
-invoices, no KYC queue, no custody.
+One side locks a fixed amount in USDC. The other delivers an artefact that is anchored as a hash with
+a 30-day expiry. The payout clears only if a live anchor matches the payee, the funder and the
+amount, so the money moves in one transaction — no invoice, no KYC queue, no custody, no platform
+deciding. Bug bounties are one of six situations we document; the rail is what the other five have in
+common ([`docs/USE-CASES.md`](docs/USE-CASES.md), [`docs/POSITIONING.md`](docs/POSITIONING.md)).
 
 Live on **Arc Testnet** (chain `5042002`), where USDC is the gas token. Built for ETHGlobal Mumbai with
 all three core partners load-bearing rather than decorative: **Arc** (settlement + Arc Studio
 deployment), **Arkiv** (expiring evidence anchors that gate every payout) and the **Ethereum
 Foundation** Alternative Mempool (EIP-8141 sponsored settlement, proven end to end on devnet).
 
-- Marketing site: `frontend/src/app/page.tsx`
+- Marketing site: `frontend/src/app/page.tsx` — mechanism first, then six situations, then what we
+  refuse to claim
 - App: `/app` → Overview · `/app/rewards` · `/app/payouts` · `/app/gasless` · `/app/settings`
 
 ## Submitting for (ETHGlobal Mumbai)

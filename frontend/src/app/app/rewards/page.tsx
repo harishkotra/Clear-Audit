@@ -9,6 +9,7 @@ import { Empty, ExplorerLink, Notice, SkeletonRows, StatusPill } from "@/compone
 import { useEscrow } from "@/hooks/useEscrow";
 import { useNow, useVault } from "@/hooks/useVault";
 import { useProfile } from "@/lib/profile";
+import { useCaseById } from "@/lib/usecases";
 import { fingerprintReport, downloadBlob } from "@/lib/report";
 import { money, shortAddress, timeLeft } from "@/lib/format";
 
@@ -20,6 +21,8 @@ export default function RewardsPage() {
   const { state, reports, loading, refresh } = useVault();
   const { fundReward, releaseReward, disputeReward, isPending } = useEscrow();
   const now = useNow();
+  const uc = useCaseById(profile?.useCase);
+  const noun = uc.nouns.deal;
 
   const [researcher, setResearcher] = useState("");
   const [amount, setAmount] = useState("");
@@ -160,15 +163,15 @@ export default function RewardsPage() {
 
   return (
     <AppShell
-      title="Rewards"
+      title={uc.label}
       subtitle={
         isCompany
-          ? "Lock a reward in USDC. Release it when you accept a finding."
-          : "Rewards are reserved for you. Submit a finding to get paid."
+          ? `Lock the amount in USDC. Release it when ${uc.evidence.toLowerCase()} matches.`
+          : `${uc.label}s are reserved for a wallet. Deliver, and the ${uc.nouns.payer} releases.`
       }
       actions={
         isCompany ? (
-          <a href="#fund" className="btn btn-primary">Fund a reward</a>
+          <a href="#fund" className="btn btn-primary">Fund a {noun}</a>
         ) : (
           <Link href="/app/payouts" className="btn btn-ghost">Payment history</Link>
         )
@@ -198,14 +201,14 @@ export default function RewardsPage() {
       {isCompany && (
         <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
           <form id="fund" onSubmit={onFund} className="card h-fit p-5">
-            <h2 className="text-[14px] font-medium text-white">Fund a reward</h2>
+            <h2 className="text-[14px] font-medium capitalize text-white">Fund a {noun}</h2>
             <p className="mt-1 text-[12.5px] leading-relaxed text-zinc-500">
               The amount is locked in the vault. You stay in control of when it is released.
             </p>
 
             <div className="mt-4 space-y-3">
               <div>
-                <label className="label" htmlFor="researcher">Researcher wallet</label>
+                <label className="label capitalize" htmlFor="researcher">{uc.nouns.payee} wallet</label>
                 <input
                   id="researcher"
                   className="field font-mono text-[12.5px]"
@@ -216,7 +219,7 @@ export default function RewardsPage() {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="amount">Reward amount</label>
+                <label className="label capitalize" htmlFor="amount">{noun} amount</label>
                 <div className="relative">
                   <input
                     id="amount"
@@ -234,7 +237,7 @@ export default function RewardsPage() {
             </div>
 
             <button className="btn btn-primary mt-4 w-full" disabled={funding || isPending}>
-              {funding ? "Confirm in your wallet…" : "Fund reward"}
+              {funding ? "Confirm in your wallet…" : `Fund ${noun}`}
             </button>
             <p className="mt-3 text-[11px] leading-relaxed text-zinc-600">
               Requires an approval and one deposit transaction. The vault holds the funds — not
@@ -251,15 +254,15 @@ export default function RewardsPage() {
               <SkeletonRows rows={4} />
             ) : mine.length === 0 ? (
               <Empty
-                title="No rewards yet"
-                body="Fund your first reward to open a program. The researcher you name is the only wallet the vault can pay."
+                title={`No ${noun}s yet`}
+                body={`Fund your first ${noun}. The ${uc.nouns.payee} you name is the only wallet the vault can pay.`}
               />
             ) : (
               <div className="table-wrap">
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Reward</th>
+                      <th className="capitalize">{noun}</th>
                       <th>Researcher</th>
                       <th>Amount</th>
                       <th>Finding</th>

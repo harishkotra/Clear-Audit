@@ -7,6 +7,7 @@ import AppShell from "@/components/AppShell";
 import Onboarding from "@/components/Onboarding";
 import { Empty, SkeletonRows, Stat, StatusPill } from "@/components/ui";
 import { useProfile, ROLE_LABEL } from "@/lib/profile";
+import { useCaseById } from "@/lib/usecases";
 import { useVault } from "@/hooks/useVault";
 import { money, shortAddress } from "@/lib/format";
 
@@ -16,6 +17,11 @@ export default function WorkspaceHome() {
   const { state, loading } = useVault();
 
   const isCompany = profile?.role === "company";
+  // The situation chosen at setup drives the nouns: a retainer client sees
+  // "milestone", a disclosure programme sees "disclosure payout". Bounties are
+  // just one of the six, not the default vocabulary of the whole app.
+  const uc = useCaseById(profile?.useCase);
+  const noun = uc.nouns.deal;
 
   const mine = useMemo(() => {
     if (!address) return [];
@@ -43,7 +49,7 @@ export default function WorkspaceHome() {
     return (
       <AppShell
         title="Welcome to ClearAudit"
-        subtitle="Set up your workspace to start funding rewards or getting paid."
+        subtitle="Set up your workspace: what you settle decides the vocabulary, not who you are."
       >
         <Onboarding />
       </AppShell>
@@ -57,12 +63,12 @@ export default function WorkspaceHome() {
       title={`Hello, ${profile.name.split(" ")[0]}`}
       subtitle={
         isCompany
-          ? "Fund rewards, review findings, and release payments in one place."
-          : "Your rewards, findings and payments — all in one place."
+          ? `Settle ${uc.label.toLowerCase()}s: escrow the amount, release it when the evidence matches.`
+          : `Your ${noun}s and payments — evidence-backed, no invoices in between.`
       }
       actions={
         <Link href="/app/rewards" className="btn btn-primary">
-          {isCompany ? "Fund a reward" : "Find rewards"}
+          {isCompany ? `Fund a ${noun}` : `View ${noun}s`}
         </Link>
       }
     >
@@ -71,7 +77,7 @@ export default function WorkspaceHome() {
           label={isCompany ? "In escrow" : "Ready to claim"}
           value={money(totals.open.toString(), state.token.decimals).replace(" USDC", "")}
           unit="USDC"
-          hint={`${mine.filter((d) => d.status === 1).length} open`}
+          hint={`${mine.filter((d) => d.status === 1).length} open ${noun}s`}
           accent
         />
         <Stat
@@ -85,18 +91,14 @@ export default function WorkspaceHome() {
           value={mine.filter((d) => d.status === 2).length}
           hint="Awaiting arbitration"
         />
-        <Stat
-          label="Workspace"
-          value={ROLE_LABEL[profile.role]}
-          hint={address ? shortAddress(address) : "Wallet not connected"}
-        />
+        <Stat label="Workspace" value={ROLE_LABEL[profile.role]} hint={uc.label} />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div className="card p-5">
           <h2 className="text-[14px] font-medium text-white">Getting started</h2>
           <p className="mt-1 text-[12.5px] text-zinc-500">
-            Four steps from an empty workspace to a paid researcher.
+            Four steps from an empty workspace to a settled {noun}.
           </p>
           <ol className="mt-4 space-y-3">
             {[
@@ -108,15 +110,15 @@ export default function WorkspaceHome() {
               },
               {
                 done: mine.length > 0,
-                title: isCompany ? "Fund your first reward" : "Find a reward to work on",
+                title: isCompany ? `Fund your first ${noun}` : `Claim a ${noun}`,
                 body: isCompany
-                  ? "Name a researcher and lock the amount in USDC."
-                  : "Live rewards appear as soon as a company funds them.",
+                  ? `Name the ${uc.nouns.payee} and lock the amount in USDC.`
+                  : `Open ${noun}s appear as soon as a ${uc.nouns.payer} funds one.`,
               },
               {
                 done: mine.some((d) => d.status >= 3),
-                title: isCompany ? "Accept a finding and pay" : "Get paid in USDC",
-                body: "One click releases the reward on-chain.",
+                title: isCompany ? "Anchor evidence, then release" : "Get paid in USDC",
+                body: `The payout clears only when the anchor matches: ${uc.evidence.toLowerCase()}.`,
               },
             ].map((s, i) => (
               <li key={s.title} className="flex gap-3">
@@ -142,17 +144,17 @@ export default function WorkspaceHome() {
 
         <div className="card flex flex-col p-5">
           <h2 className="text-[14px] font-medium text-white">
-            {isCompany ? "How payouts work" : "How you get paid"}
+            {isCompany ? "How the gate decides" : "How you get paid"}
           </h2>
           <div className="mt-4 space-y-3 text-[12.5px] leading-relaxed text-zinc-400">
             <p>
               {isCompany
-                ? "Funds sit in a public contract, not with us. You release a payment only when you accept a finding."
-                : "You never sign a transaction to receive money. The company releases the reward and it lands in your wallet."}
+                ? `Funds sit in a public contract, not with us. The release is refused unless a live anchor matches the ${uc.nouns.payee}, the amount and this ${noun}.`
+                : `You never sign a transaction to receive money. The ${uc.nouns.payer} releases it and it lands in your wallet.`}
             </p>
             <p>
-              Every report is anchored with a hash and a 30-day expiry, so evidence is verifiable
-              without being stored forever.
+              The evidence record is a hash with a 30-day expiry: verifiable while it matters, gone
+              afterwards. For this situation that record is {uc.evidence.toLowerCase()}.
             </p>
           </div>
           <div className="mt-auto pt-5">
@@ -178,12 +180,12 @@ export default function WorkspaceHome() {
             title="Nothing here yet"
             body={
               isCompany
-                ? "Your workspace is ready. Fund a reward to see it appear here with live on-chain state."
-                : "No rewards have been funded on this vault yet. When a company posts one, it shows up here."
+                ? `Your workspace is ready. Fund a ${noun} to see it here with live on-chain state.`
+                : `No ${noun}s have been funded on this vault yet. When a ${uc.nouns.payer} posts one, it shows up here.`
             }
             action={
               <Link href="/app/rewards" className="btn btn-primary">
-                {isCompany ? "Fund a reward" : "Browse rewards"}
+                {isCompany ? `Fund a ${noun}` : `Browse ${noun}s`}
               </Link>
             }
           />
@@ -192,9 +194,9 @@ export default function WorkspaceHome() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Reward</th>
-                  <th>Company</th>
-                  <th>Researcher</th>
+                  <th className="capitalize">{noun}</th>
+                  <th className="capitalize">{uc.nouns.payer}</th>
+                  <th className="capitalize">{uc.nouns.payee}</th>
                   <th>Amount</th>
                   <th>Status</th>
                 </tr>
