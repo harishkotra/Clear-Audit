@@ -111,6 +111,7 @@ export default function PaymentsPage() {
             <SkeletonRows rows={5} />
           ) : deals.length === 0 ? (
             <Empty
+              mark="payments"
               title={filter === "all" ? "No payments yet" : "Nothing in this filter"}
               body={
                 filter === "all"

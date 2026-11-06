@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Brand, { Mark } from "@/components/Brand";
 import ConnectButton from "@/components/ConnectButton";
+import Reveal from "@/components/Reveal";
 import { ArrowUpRight } from "@/components/icons";
 import { USE_CASES } from "@/lib/usecases";
 
@@ -96,7 +97,7 @@ function Gate() {
     <div className="border border-[var(--rule)] bg-[#0a0a0b]">
       <div className="flex items-center justify-between border-b border-[var(--rule)] px-3.5 py-2">
         <span className="micro">release-guard.ts</span>
-        <span className="micro text-brand-500">runs before signing</span>
+        <span className="micro gate-live text-brand-500">runs before signing</span>
       </div>
       <pre className="overflow-x-auto px-3.5 py-3 font-mono text-[11px] leading-[1.75] text-[#c9c3b8]">
 {`status        Open
@@ -223,14 +224,14 @@ export default function Landing() {
             </p>
           </div>
           <div className="grid gap-x-10 gap-y-8 sm:grid-cols-2">
-            {RULE.map((r) => (
-              <div key={r.n} className="border-t border-[var(--rule)] pt-4">
+            {RULE.map((r, i) => (
+              <Reveal key={r.n} delay={Math.min(i, 3) * 40} className="border-t border-[var(--rule)] pt-4">
                 <div className="flex items-baseline gap-3">
                   <span className="font-mono text-[10.5px] text-brand-500">{r.n}</span>
                   <h3 className="text-[15px] font-medium text-[#ece7dd]">{r.title}</h3>
                 </div>
                 <p className="mt-2 text-[13.5px] leading-[1.7] text-[#8d887f]">{r.body}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -321,13 +322,15 @@ export default function Landing() {
           </div>
           <div>
             <ol className="grid gap-px bg-[var(--rule)] sm:grid-cols-2">
-              {DISPATCH.map(([n, title, body]) => (
+              {DISPATCH.map(([n, title, body], i) => (
                 <li key={n} className="bg-[#0b0b0c] p-5">
-                  <div className="flex items-baseline gap-3">
-                    <span className="font-mono text-[10.5px] text-brand-500">{n}</span>
-                    <h3 className="text-[14.5px] font-medium text-[#ece7dd]">{title}</h3>
-                  </div>
-                  <p className="mt-2 text-[12.5px] leading-[1.7] text-[#8d887f]">{body}</p>
+                  <Reveal delay={Math.min(i, 3) * 40}>
+                    <div className="flex items-baseline gap-3">
+                      <span className="font-mono text-[10.5px] text-brand-500">{n}</span>
+                      <h3 className="text-[14.5px] font-medium text-[#ece7dd]">{title}</h3>
+                    </div>
+                    <p className="mt-2 text-[12.5px] leading-[1.7] text-[#8d887f]">{body}</p>
+                  </Reveal>
                 </li>
               ))}
             </ol>
@@ -399,11 +402,11 @@ export default function Landing() {
           What we will not claim.
         </h2>
         <div className="mt-10 grid gap-x-10 gap-y-6 sm:grid-cols-2">
-          {LIMITS.map((l) => (
-            <div key={l.title} className="border-t border-[var(--rule)] pt-4">
+          {LIMITS.map((l, i) => (
+            <Reveal key={l.title} delay={Math.min(i, 3) * 40} className="border-t border-[var(--rule)] pt-4">
               <h3 className="text-[14px] font-medium text-[#ece7dd]">{l.title}</h3>
               <p className="mt-2 text-[13px] leading-[1.7] text-[#8d887f]">{l.body}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
         <p className="mt-8 max-w-[70ch] border-l border-brand-500/50 pl-4 text-[12.5px] leading-[1.7] text-[#6f6a62]">
@@ -424,11 +427,15 @@ export default function Landing() {
                 <details key={f.q} className="group py-4">
                   <summary className="flex cursor-pointer list-none items-baseline justify-between gap-4 text-[14px] text-[#e4dfd5]">
                     {f.q}
-                    <span className="font-mono text-[13px] text-[#4d4943] transition group-open:rotate-45">
+                    <span className="font-mono text-[13px] text-[#4d4943] transition-[transform] duration-[220ms] [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] group-open:rotate-45">
                       +
                     </span>
                   </summary>
-                  <p className="mt-2.5 max-w-[70ch] text-[13px] leading-[1.75] text-[#8d887f]">{f.a}</p>
+                  <div className="faq-panel">
+                    <div className="faq-panel-inner">
+                      <p className="mt-2.5 max-w-[70ch] text-[13px] leading-[1.75] text-[#8d887f]">{f.a}</p>
+                    </div>
+                  </div>
                 </details>
               ))}
             </div>

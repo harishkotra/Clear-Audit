@@ -636,6 +636,7 @@ export default function RewardsPage() {
               <SkeletonRows rows={4} />
             ) : mine.length === 0 ? (
               <Empty
+                mark="vault"
                 title={`No ${noun}s yet`}
                 body={`Fund your first ${noun}. The ${uc.nouns.payee} you name is the only wallet the vault can pay.`}
               />
@@ -811,6 +812,7 @@ export default function RewardsPage() {
               <SkeletonRows rows={2} />
             ) : openBoard.length === 0 ? (
               <Empty
+                mark="fingerprint"
                 title="No open tasks"
                 body="When a payer opens work to any agent, it appears here until someone claims it."
               />

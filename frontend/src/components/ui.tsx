@@ -1,6 +1,9 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
 import { STATUS_COPY } from "@/lib/format";
 import { ARC_EXPLORER } from "@/lib/constants";
+import { FingerprintMark, SettleMark, VaultMark } from "./icons";
 
 export function Stat({
   label,
@@ -44,21 +47,30 @@ export function StatusPill({ status }: { status: number }) {
   );
 }
 
+export type EmptyMark = "vault" | "fingerprint" | "payments";
+
+const EMPTY_MARKS = {
+  vault: VaultMark,
+  fingerprint: FingerprintMark,
+  payments: VaultMark,
+} as const;
+
 export function Empty({
   title,
   body,
   action,
+  mark = "vault",
 }: {
   title: string;
   body: string;
   action?: ReactNode;
+  mark?: EmptyMark;
 }) {
+  const Mark = EMPTY_MARKS[mark];
   return (
     <div className="card flex flex-col items-center justify-center px-6 py-12 text-center">
-      <div className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-zinc-500">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <path d="M4 7h16M4 12h10M4 17h7" strokeLinecap="round" />
-        </svg>
+      <div className="grid h-11 w-11 place-items-center rounded-[3px] border border-white/10 bg-white/[0.03] text-brand-500/80">
+        <Mark aria-hidden />
       </div>
       <h3 className="mt-4 text-[14.5px] font-medium text-white">{title}</h3>
       <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-zinc-500">{body}</p>
@@ -78,14 +90,33 @@ export function SkeletonRows({ rows = 3 }: { rows?: number }) {
 }
 
 export function Notice({ tone, children }: { tone: "error" | "success" | "info"; children: ReactNode }) {
+  // data-mounted fallback for browsers without @starting-style support
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   const tones = {
     error: "border-red-500/25 bg-red-500/[0.06] text-red-300",
     success: "border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-300",
     info: "border-white/10 bg-white/[0.03] text-zinc-300",
   };
+
   return (
-    <div className={`rounded-xl border px-3.5 py-2.5 text-[12.5px] leading-relaxed ${tones[tone]}`}>
-      {children}
+    <div
+      className={`notice-enter flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-[12.5px] leading-relaxed ${tones[tone]}`}
+      data-mounted={mounted ? "true" : "false"}
+      style={
+        mounted
+          ? undefined
+          : { opacity: 0, transform: "translateY(6px) scale(0.98)" }
+      }
+    >
+      {tone === "success" && (
+        <SettleMark className="mt-0.5 shrink-0 text-emerald-400/90" aria-hidden />
+      )}
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }

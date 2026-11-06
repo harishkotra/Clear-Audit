@@ -114,7 +114,7 @@ async function EvidenceBody({
         )}
 
         {data && copy && (
-          <div className="mt-8 space-y-6">
+          <div className="verdict-enter mt-8 space-y-6">
             <div className={`inline-flex items-center gap-2 border px-3 py-1.5 text-[12px] ${copy.tone}`}>
               <span className="font-mono uppercase tracking-[0.12em]">{copy.label}</span>
               <span className="text-[#8d887f]">deal #{data.dealId}</span>

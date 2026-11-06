@@ -21,6 +21,12 @@
   --muted: #8d887f;
   --faint: #625e58;
   --rule: rgba(236, 231, 221, 0.12);
+  /* Motion tokens — namespaced so Tailwind's built-in --ease-out does not win */
+  --motion-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --motion-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --duration-press: 160ms;
+  --duration-ui: 220ms;
+  --duration-enter: 240ms;
 }
 
 * {
@@ -91,8 +97,15 @@ body {
     font-size: 0.8125rem;
     font-weight: 500;
     letter-spacing: 0.005em;
-    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+    transition:
+      background var(--duration-press) ease,
+      border-color var(--duration-press) ease,
+      color var(--duration-press) ease,
+      transform var(--duration-press) var(--motion-ease-out);
     white-space: nowrap;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
   }
   .btn:disabled {
     opacity: 0.4;
@@ -256,6 +269,89 @@ body {
   }
 }
 
+@keyframes gate-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
 .rise {
-  animation: rise 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: rise var(--duration-enter) var(--motion-ease-out) both;
+}
+
+/* Inline notices after fund / release / dispute */
+.notice-enter {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity var(--duration-ui) var(--motion-ease-out),
+    transform var(--duration-ui) var(--motion-ease-out);
+}
+@starting-style {
+  .notice-enter {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+/* Evidence verdict panel */
+.verdict-enter {
+  opacity: 1;
+  transform: translateY(0);
+  animation: rise var(--duration-enter) var(--motion-ease-out) both;
+}
+
+/* Landing FAQ accordion */
+.faq-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-ui) var(--motion-ease-out);
+}
+details[open] > .faq-panel {
+  grid-template-rows: 1fr;
+}
+.faq-panel-inner {
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity var(--duration-ui) var(--motion-ease-out);
+}
+details[open] > .faq-panel > .faq-panel-inner {
+  opacity: 1;
+}
+
+/* Soft live indicator on the Gate chip */
+.gate-live {
+  animation: gate-pulse 2.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .rise,
+  .notice-enter,
+  .verdict-enter,
+  .gate-live {
+    animation: none !important;
+    transform: none !important;
+  }
+  .notice-enter,
+  .faq-panel,
+  .faq-panel-inner {
+    transition: opacity 160ms ease !important;
+  }
+  .faq-panel {
+    /* Instant open still works via grid; skip animated row morph */
+    transition: none !important;
+  }
+  .skeleton {
+    animation: none;
+  }
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
 }

@@ -75,3 +75,33 @@ export const BoltIcon = (p: P) => (
     <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />
   </svg>
 );
+
+/** Empty deals / payments — escrow bracket with a lock hairline. */
+export const VaultMark = (p: P) => (
+  <svg {...base} width={22} height={22} {...p}>
+    <path d="M7 5H5v14h2" />
+    <path d="M17 5h2v14h-2" />
+    <rect x="9" y="10" width="6" height="5" rx="1" />
+    <path d="M10.5 10V8.5a1.5 1.5 0 0 1 3 0V10" />
+  </svg>
+);
+
+/** Empty / missing evidence — concentric arcs as a fingerprint. */
+export const FingerprintMark = (p: P) => (
+  <svg {...base} width={22} height={22} {...p}>
+    <path d="M12 4.5a5.5 5.5 0 0 1 5.5 5.5v2" />
+    <path d="M12 4.5A5.5 5.5 0 0 0 6.5 10v4.5" />
+    <path d="M12 7.5a2.5 2.5 0 0 1 2.5 2.5v5" />
+    <path d="M12 7.5A2.5 2.5 0 0 0 9.5 10v3" />
+    <path d="M12 14v3.5" />
+    <path d="M8 16.5c.8 1.4 2.2 2.2 4 2.2s3.2-.8 4-2.2" />
+  </svg>
+);
+
+/** Success notice — check across a settlement rule. */
+export const SettleMark = (p: P) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <path d="M4 12h16" />
+    <path d="m8.5 12 2.2 2.2L15.5 9" />
+  </svg>
+);

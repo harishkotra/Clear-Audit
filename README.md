@@ -166,15 +166,6 @@ Earlier vaults (v1 to v3) remain on chain and readable. The app points at v4. Fu
 
 `npm run verify:chain` re-reads the deployment from public RPC and fails on mismatch.
 
-## Screenshots
-
-Add images here when ready.
-
-<!-- drop: assets/landing.png -->
-<!-- drop: assets/app-overview.png -->
-<!-- drop: assets/evidence.png -->
-<!-- drop: assets/gasless.png -->
-
 | Screen | Path |
 | --- | --- |
 | Landing | `/` |
