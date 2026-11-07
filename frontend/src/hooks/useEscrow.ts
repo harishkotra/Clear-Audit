@@ -228,6 +228,20 @@ export function useEscrow() {
       setIsPending(true);
       setError(null);
       try {
+        // On-chain evidence must be committed before release (separate from the Arkiv anchor).
+        const evidence = (await w.publicClient.readContract({
+          address: VAULT_ADDRESS,
+          abi: BOUNTY_VAULT_V2_ABI,
+          functionName: "getEvidence",
+          args: [BigInt(dealId)],
+        })) as readonly [`0x${string}`, bigint, bigint];
+        const evHash = evidence[0];
+        if (!evHash || evHash === NO_CRITERIA) {
+          throw new Error(
+            "Commit evidence on chain first. After the payee anchors on Arkiv, click Commit evidence, then Release payment.",
+          );
+        }
+
         // Arkiv is load-bearing: the server refuses to help settle a deal whose
         // evidence is missing, expired, or describes another beneficiary.
         const guardRes = await fetch("/api/release-guard", {
@@ -240,6 +254,30 @@ export function useEscrow() {
           throw new Error(
             `Release blocked: ${guard.reason ?? guard.error ?? "the evidence anchor is not valid."}`,
           );
+        }
+
+        try {
+          await w.publicClient.simulateContract({
+            address: VAULT_ADDRESS,
+            abi: BOUNTY_VAULT_V2_ABI,
+            functionName: "release",
+            args: [BigInt(dealId)],
+            account: w.address,
+          });
+        } catch (simErr: unknown) {
+          const raw = humanError(simErr);
+          if (/EvidenceMissing|0x262c34ea/i.test(raw)) {
+            throw new Error(
+              "Commit evidence on chain first. After the payee anchors on Arkiv, click Commit evidence, then Release payment.",
+            );
+          }
+          if (/OnlyPayer|0x27e7e93c/i.test(raw)) {
+            throw new Error("Only the wallet that funded this settlement can release it.");
+          }
+          if (/TransferFailed|0x90b8ec18/i.test(raw)) {
+            throw new Error("USDC transfer to the payee failed. Check the payee can receive Arc USDC.");
+          }
+          throw simErr;
         }
 
         const hash = await w.walletClient.writeContract({
