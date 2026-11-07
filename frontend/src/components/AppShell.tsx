@@ -7,6 +7,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Brand from "./Brand";
 import ConnectButton from "./ConnectButton";
 import { BoltIcon, GiftIcon, HomeIcon, PayoutIcon, SettingsIcon, ArrowUpRight } from "./icons";
+import { ARC_EXPLORER_DEPLOYMENTS } from "@/lib/constants";
 import { useProfile, ROLE_LABEL } from "@/lib/profile";
 import { PRIVY_ENABLED } from "@/lib/privy";
 
@@ -163,7 +164,7 @@ function AppShellInner({
               <ArrowUpRight className="ml-auto h-3.5 w-3.5 opacity-60" />
             </Link>
             <a
-              href="https://explorer.testnet.arc.io"
+              href={ARC_EXPLORER_DEPLOYMENTS}
               target="_blank"
               rel="noreferrer"
               className="nav-link text-[13px]"

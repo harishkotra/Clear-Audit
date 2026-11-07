@@ -3,6 +3,7 @@ import Brand, { Mark } from "@/components/Brand";
 import ConnectButton from "@/components/ConnectButton";
 import Reveal from "@/components/Reveal";
 import { ArrowUpRight } from "@/components/icons";
+import { ARC_EXPLORER_DEPLOYMENTS } from "@/lib/constants";
 import { USE_CASES } from "@/lib/usecases";
 
 const RULE = [
@@ -473,20 +474,12 @@ export default function Landing() {
           <div className="flex flex-wrap items-center gap-6 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[#7d786f]">
             <Link href="/app" className="hover:text-[#ece7dd]">App</Link>
             <a
-              href="https://explorer.testnet.arc.io"
+              href={ARC_EXPLORER_DEPLOYMENTS}
               target="_blank"
               rel="noreferrer"
               className="hover:text-[#ece7dd]"
             >
               Explorer
-            </a>
-            <a
-              href="https://github.com/harishkotra/Clear-Audit/tree/main/docs"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-[#ece7dd]"
-            >
-              Docs
             </a>
             <span className="text-[#3d3a35]">chain 5042002</span>
           </div>
