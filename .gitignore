@@ -45,3 +45,6 @@ coverage/
 
 # local Arc Studio sandbox mirror (contains its own .env, never committed)
 clearaudit_smart_contract_refactor_4xiwhz/
+
+# local hackathon form uploads (logo/cover copies; app uses public/ + app/ icons)
+/submission/

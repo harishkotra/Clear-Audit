@@ -358,7 +358,7 @@ export default function MascotCompanion() {
       }}
     >
       {open && (
-        <div id={panelId} className="mascot-panel notice-enter" role="dialog" aria-label="Chat with Pip">
+        <div id={panelId} className="mascot-panel" role="dialog" aria-label="Chat with Pip">
           <div className="mascot-panel-head">
             <div>
               <div className="mascot-eyebrow">Companion</div>

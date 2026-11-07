@@ -520,11 +520,17 @@ details[open] > .faq-panel > .faq-panel-inner {
 }
 
 .mascot-panel {
-  position: fixed;
-  left: 50%;
-  bottom: calc(var(--pip-size) + 0.6rem);
-  transform: translateX(-50%);
-  width: min(20.5rem, calc(100vw - 2rem));
+  /* Sit above Pip, centered on Pip's x, clamped so the panel stays on screen */
+  --panel-w: min(20.5rem, calc(100vw - 2rem));
+  --pip-left: var(--pip-x, calc(100vw - var(--pip-size) - 16px));
+  position: absolute;
+  left: clamp(
+    1rem,
+    calc(var(--pip-left) + var(--pip-size) / 2 - var(--panel-w) / 2),
+    calc(100vw - var(--panel-w) - 1rem)
+  );
+  bottom: calc(100% + 0.55rem);
+  width: var(--panel-w);
   max-height: min(26rem, calc(100vh - 8rem));
   display: flex;
   flex-direction: column;
@@ -535,6 +541,18 @@ details[open] > .faq-panel > .faq-panel-inner {
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
   overflow: hidden;
   pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transform-origin: bottom center;
+  transition:
+    opacity var(--duration-ui) var(--motion-ease-out),
+    transform var(--duration-ui) var(--motion-ease-out);
+}
+@starting-style {
+  .mascot-panel {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
 }
 .mascot-panel-head {
   display: flex;
