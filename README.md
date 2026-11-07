@@ -243,6 +243,13 @@ deployments*.json    deployed addresses and seed record
 - **P.** Report bodies stay in the browser unless exported. Arkiv sees a fingerprint and deal metadata for thirty days. No analytics scripts in the client.
 - **S.** Secrets are server-only. `release` cannot redirect the payee. No admin withdrawal and no upgrade key. Threat table: [`SECURITY.md`](SECURITY.md).
 
-## License
+## Screenshots
 
-MIT.
+<img width="3096" height="9534" alt="screencapture-localhost-3000-2026-11-07-07_03_58" src="https://github.com/user-attachments/assets/5730579a-0444-4104-9ab2-4a61a2a1ea06" />
+<img width="3096" height="2860" alt="screencapture-localhost-3000-app-2026-11-07-07_04_52" src="https://github.com/user-attachments/assets/007679e1-e277-443a-8241-bee1d9aef394" />
+<img width="3096" height="2418" alt="screencapture-localhost-3000-app-payouts-2026-11-07-07_05_20" src="https://github.com/user-attachments/assets/6956d2c1-dfc7-41d7-a9e1-c4be9f775f29" />
+<img width="3096" height="2418" alt="screencapture-localhost-3000-app-gasless-2026-11-07-07_05_35" src="https://github.com/user-attachments/assets/1df93767-6b5a-4d2e-b473-2b63035b19b1" />
+<img width="3096" height="2418" alt="screencapture-localhost-3000-app-settings-2026-11-07-07_09_48" src="https://github.com/user-attachments/assets/7b1447aa-f8c3-44f0-90ca-9dc970dbf244" />
+<img width="3096" height="2438" alt="screencapture-localhost-3000-evidence-2026-11-07-07_10_09" src="https://github.com/user-attachments/assets/431b20b7-7415-42bf-8ee3-bdc09335423e" />
+<img width="3096" height="2418" alt="screencapture-localhost-3000-app-settings-2026-11-07-07_09_48 (1)" src="https://github.com/user-attachments/assets/2bfe3f52-3809-4a11-8480-decf25acc68d" />
+
