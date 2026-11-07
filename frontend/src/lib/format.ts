@@ -30,14 +30,18 @@ export function timeLeft(expiresAt: string | null | undefined, now: number) {
   return `${h}h ${m}m left`;
 }
 
-/** Product language for the vault state machine. */
+/**
+ * Product language for the vault state machine.
+ * Mirrors BountyVault.Status: None, Open, Disputed, Released, ResolvedToPayee, ResolvedToPayer.
+ * "Open" means funded and ready for evidence — nothing else to approve.
+ */
 export const STATUS_COPY: Record<number, { label: string; tone: "open" | "review" | "paid" | "closed" }> = {
-  0: { label: "Not found", tone: "closed" },
-  1: { label: "Awaiting review", tone: "open" },
-  2: { label: "In review", tone: "review" },
+  0: { label: "None", tone: "closed" },
+  1: { label: "Open", tone: "open" },
+  2: { label: "Disputed", tone: "review" },
   3: { label: "Paid", tone: "paid" },
-  4: { label: "Paid", tone: "paid" },
-  5: { label: "Returned", tone: "closed" },
+  4: { label: "Paid to payee", tone: "paid" },
+  5: { label: "Returned to payer", tone: "closed" },
 };
 
 export const SEVERITY_COPY: Record<string, string> = {
